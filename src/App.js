@@ -1,491 +1,127 @@
 import React, { useState } from 'react';
-import YearDetails from './YearDetails';
 import '@xyflow/react/dist/style.css';
 
-function App() {
-  const [formData, setFormData] = useState({
-    initialMortgage: 1091000,
-    mortgageRate: 3.65,
-    amortYears: 30,
-    helocRate: 4.70,
-    taxRate: 53.5,
-    annualReturn: 7,
-    growthRate: 7,
-    dividendYield: 4,
-    initialTfsa: 955 * 39.79,
-    tfsaRoomYear1: 42000,
-    annualTfsaIncrease: 7000,
-    rrspYear1: 50000,
-    rrspOngoing: 25000,
-    initialHelocAvailable: 300000,
-  });
+// Components
+import YearDetails from './YearDetails';
+import FinancialForm from './components/form/FinancialForm';
+import ComparisonSummary from './components/summary/ComparisonSummary';
+import DataTable from './components/table/DataTable';
 
+// Hooks
+import { useFormData } from './hooks/useFormData';
+
+// Utils
+import { 
+  generateFinancialData, 
+  calculateTraditionalPayoff, 
+  calculateSmithManoeuvrePayoff 
+} from './utils/financialCalculations';
+
+const App = () => {
+  // Custom hook for form state management
+  const { formData, handleChange } = useFormData();
+
+  // Local component state
   const [tableData, setTableData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(null);
   const [comparisonData, setComparisonData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: parseFloat(value) || 0 });
-  };
-
-  // Calculate traditional mortgage payoff time - VERIFIED MATHEMATICALLY ACCURATE
-  const calculateTraditionalPayoff = (initialMortgage, mortgageRatePct, amortYears) => {
-    const mortgageRate = mortgageRatePct / 100;
-    const monthlyRate = mortgageRate / 12;
-    const n = amortYears * 12;
-    
-    // Standard mortgage payment formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-    const power = Math.pow(1 + monthlyRate, n);
-    const monthlyPayment = initialMortgage * monthlyRate * power / (power - 1);
-    
-    // Calculate actual payoff with precise month-by-month amortization
-    let remainingBalance = initialMortgage;
-    let months = 0;
-    let totalInterestPaid = 0;
-    
-    // Standard amortization: each payment = interest on remaining balance + principal
-    while (remainingBalance > 0.01 && months < n) {
-      const interestPayment = remainingBalance * monthlyRate;
-      const principalPayment = monthlyPayment - interestPayment;
+  const handleGenerateTable = async () => {
+    try {
+      setIsLoading(true);
       
-      totalInterestPaid += interestPayment;
-      remainingBalance -= principalPayment;
-      months++;
+      // Generate financial data using utility function
+      const data = generateFinancialData(formData);
+      setTableData(data);
       
-      // Prevent negative balance from rounding
-      if (remainingBalance < 0) remainingBalance = 0;
-    }
-    
-    return {
-      years: Math.round(months / 12 * 10) / 10,
-      months: months,
-      monthlyPayment: Math.round(monthlyPayment * 100) / 100, // More precise rounding
-      totalInterest: Math.round(totalInterestPaid * 100) / 100 // Use actual interest paid, not estimate
-    };
-  };
-
-  // Calculate Smith Manoeuvre payoff time from table data
-  const calculateSmithManoeuvrePayoff = (data) => {
-    const payoffYear = data.find(row => row.mortgageBalance === 0);
-    if (payoffYear) {
-      return {
-        years: payoffYear.year,
-        finalPortfolio: payoffYear.portfolioValue,
-        totalLeveraged: payoffYear.helocBalance,
-        netWealth: payoffYear.portfolioValue - payoffYear.helocBalance
-      };
-    }
-    
-    // If not fully paid off, find the closest year
-    const lastYear = data[data.length - 1];
-    return {
-      years: lastYear.year,
-      remainingMortgage: lastYear.mortgageBalance,
-      finalPortfolio: lastYear.portfolioValue,
-      totalLeveraged: lastYear.helocBalance,
-      netWealth: lastYear.portfolioValue - lastYear.helocBalance
-    };
-  };
-
-  const generateTable = () => {
-    const {
-      initialMortgage,
-      mortgageRate: mortgageRatePct,
-      amortYears,
-      helocRate: helocRatePct,
-      taxRate: taxRatePct,
-      annualReturn: annualReturnPct,
-      growthRate: growthRatePct,
-      dividendYield: dividendYieldPct,
-      initialTfsa,
-      tfsaRoomYear1,
-      annualTfsaIncrease,
-      rrspYear1,
-      rrspOngoing,
-      initialHelocAvailable,
-    } = formData;
-
-    const mortgageRate = mortgageRatePct / 100;
-    const helocRate = helocRatePct / 100;
-    const taxRate = taxRatePct / 100;
-    const annualReturn = annualReturnPct / 100;
-    const growthRate = growthRatePct / 100;
-    const dividendYield = dividendYieldPct / 100;
-
-    const totalLimit = initialMortgage + initialHelocAvailable;
-    const monthlyRate = mortgageRate / 12;
-    const n = amortYears * 12;
-    const power = Math.pow(1 + monthlyRate, n);
-    const monthlyPayment = initialMortgage * monthlyRate * power / (power - 1);
-    const annualPayment = monthlyPayment * 12;
-
-    let currentMortgage = initialMortgage;
-    let currentHeloc = 0;
-    let currentTfsa = initialTfsa;
-    let currentRrsp = 0;
-    let currentNonReg = 0;
-    let currentDeductible = 0;
-    const data = [];
-
-    for (let year = 1; year <= 20; year++) {
-      const beginning = {
-        mortgage: currentMortgage,
-        heloc: currentHeloc,
-        tfsa: currentTfsa,
-        rrsp: currentRrsp,
-        nonReg: currentNonReg,
-        deductible: currentDeductible,
-        portfolio: currentTfsa + currentRrsp + currentNonReg,
-      };
-
-      const isYear1 = year === 1;
-      const rrspContrib = isYear1 ? rrspYear1 : rrspOngoing;
-      const tfsaHeloc = isYear1 ? tfsaRoomYear1 : 0;
-      const tfsaSavings = isYear1 ? 0 : annualTfsaIncrease;
-      const tfsaContrib = tfsaHeloc + tfsaSavings;
-      const nonDeductibleFromP = isYear1 ? 0 : rrspContrib;
-      const initialKick = isYear1 ? initialHelocAvailable : 0;
-      const initialNonReg = isYear1 ? initialKick - tfsaHeloc - rrspContrib : 0;
-
-      currentDeductible += initialNonReg;
-      currentNonReg += initialNonReg;
-      currentHeloc += initialKick;
-
-      // Calculate principal built (P)
-      const standardPrincipal = annualPayment - currentMortgage * mortgageRate;
-      const a = dividendYield / 2;
-      const b = taxRate * helocRate / 2;
-      const left = 1 - a - b;
-      const rightAdd = a + b;
-      const constant = standardPrincipal + dividendYield * currentNonReg + rrspContrib * taxRate + taxRate * helocRate * currentDeductible;
-      const dividendsThisYear = Math.round(dividendYield * currentNonReg);
-      let P = (constant + rightAdd * nonDeductibleFromP) / left;
-      P = Math.min(P, currentMortgage);
-
-      // Calculate values with proper tax-deductible vs non-deductible interest split
-      const additionalDeductible = P - nonDeductibleFromP;
-      const averageDeductible = currentDeductible + additionalDeductible / 2;
+      // Calculate comparison data
+      const traditionalPayoff = calculateTraditionalPayoff(
+        formData.initialMortgage, 
+        formData.mortgageRate, 
+        formData.amortYears
+      );
       
-      // HELOC Interest Breakdown:
-      // 1. Deductible portion: Interest on non-registered investments (gets re-borrowed + tax refund)
-      const deductibleInterest = helocRate * averageDeductible;
+      const smithManoeuvrePayoff = calculateSmithManoeuvrePayoff(data);
       
-      // 2. Non-deductible portion: Interest on TFSA/RRSP funding (paid from savings, no tax benefit)
-      const nonDeductibleBalance = currentHeloc - currentDeductible - additionalDeductible / 2;
-      const nonDeductibleInterest = Math.max(0, helocRate * nonDeductibleBalance);
-      
-      // Total HELOC interest charged
-      const helocInterest = deductibleInterest + nonDeductibleInterest;
-      
-      // Tax refund ONLY includes: RRSP contribution + deductible interest (NOT non-deductible interest)
-      const refund = rrspContrib * taxRate + deductibleInterest * taxRate;
-      
-      const averageNonReg = currentNonReg + additionalDeductible / 2;
-      const tfsaValue = (currentTfsa + tfsaHeloc + tfsaSavings) * (1 + annualReturn);
-      const rrspValue = (currentRrsp + rrspContrib) * (1 + annualReturn);
-      const nonRegValue = currentNonReg * (1 + growthRate) + additionalDeductible * (1 + growthRate / 2);
-      const portfolioValue = tfsaValue + rrspValue + nonRegValue;
-
-      // Percent changes
-      const tfsaPct = beginning.tfsa + tfsaContrib > 0 ? ((tfsaValue - beginning.tfsa - tfsaContrib) / (beginning.tfsa + tfsaContrib)) * 100 : 0;
-      const rrspPct = beginning.rrsp + rrspContrib > 0 ? ((rrspValue - beginning.rrsp - rrspContrib) / (beginning.rrsp + rrspContrib)) * 100 : 0;
-      const nonRegPct = beginning.nonReg + initialNonReg + additionalDeductible > 0 ? ((nonRegValue - beginning.nonReg - initialNonReg - additionalDeductible) / (beginning.nonReg + initialNonReg + additionalDeductible / 2)) * 100 : 0;
-      const portfolioPct = beginning.portfolio > 0 ? ((portfolioValue - beginning.portfolio - (tfsaContrib + rrspContrib + initialNonReg + additionalDeductible)) / beginning.portfolio) * 100 : 0;
-      const mortgageDecreasePct = beginning.mortgage > 0 ? (P / beginning.mortgage * 100) : 0;
-      const helocIncreasePct = beginning.heloc > 0 ? (P / beginning.heloc * 100) : 0;
-
-      // Update for next year
-      currentTfsa = tfsaValue;
-      currentRrsp = rrspValue;
-      currentNonReg = nonRegValue;
-      currentDeductible += additionalDeductible;
-      currentMortgage -= P;
-      currentHeloc += P;
-      if (currentMortgage < 0) currentMortgage = 0;
-      if (currentHeloc > totalLimit) currentHeloc = totalLimit; // Cap at implied home equity
-
-      data.push({
-        year,
-        mortgageBalance: Math.round(currentMortgage),
-        helocBalance: Math.round(currentHeloc),
-        helocInterest: Math.round(helocInterest),
-        portfolioValue: Math.round(portfolioValue),
-        tfsaValue: Math.round(tfsaValue),
-        rrspValue: Math.round(rrspValue),
-        nonRegValue: Math.round(nonRegValue),
-        taxRefund: Math.round(refund),
-        principalBuilt: Math.round(P),
-        details: {
-          beginning,
-          assumptions: {
-            mortgageRate: mortgageRatePct,
-            helocRate: helocRatePct,
-            taxRate: taxRatePct,
-            annualReturn: annualReturnPct,
-            growthRate: growthRatePct,
-            dividendYield: dividendYieldPct,
-            rrspContrib,
-            tfsaContrib,
-            initialNonReg,
-          },
-          calculations: {
-            standardPrincipal: Math.round(standardPrincipal),
-            a: a.toFixed(4),
-            b: b.toFixed(4),
-            left: left.toFixed(4),
-            rightAdd: rightAdd.toFixed(4),
-            constant: Math.round(constant),
-            P: Math.round(P),
-            additionalDeductible: Math.round(additionalDeductible),
-            averageDeductible: Math.round(averageDeductible),
-            deductibleInterest: Math.round(deductibleInterest),
-            refund: Math.round(refund),
-            averageNonReg: Math.round(averageNonReg),
-            helocInterest: Math.round(helocInterest),
-            dividendsThisYear,
-          },
-          end: {
-            mortgage: currentMortgage,
-            heloc: currentHeloc,
-            tfsa: tfsaValue,
-            rrsp: rrspValue,
-            nonReg: nonRegValue,
-            portfolio: portfolioValue,
-          },
-          percentChanges: {
-            tfsa: tfsaPct.toFixed(2),
-            rrsp: rrspPct.toFixed(2),
-            nonReg: nonRegPct.toFixed(2),
-            portfolio: portfolioPct.toFixed(2),
-            mortgageDecrease: mortgageDecreasePct.toFixed(2),
-            helocIncrease: helocIncreasePct.toFixed(2),
-          }
-        }
+      setComparisonData({
+        traditional: traditionalPayoff,
+        smithManoeuvre: smithManoeuvrePayoff,
+        timeSaved: traditionalPayoff.years - smithManoeuvrePayoff.years,
+        interestSaved: traditionalPayoff.totalInterest - (smithManoeuvrePayoff.totalLeveraged || 0),
+        wealthBuilt: smithManoeuvrePayoff.finalPortfolio || 0
       });
+    } catch (error) {
+      console.error('Error generating financial data:', error);
+      // Could add error state and user notification here
+    } finally {
+      setIsLoading(false);
     }
-
-    setTableData(data);
-    
-    // Calculate comparison data
-    const traditionalPayoff = calculateTraditionalPayoff(initialMortgage, mortgageRatePct, amortYears);
-    const smithManoeuvrePayoff = calculateSmithManoeuvrePayoff(data);
-    
-    setComparisonData({
-      traditional: traditionalPayoff,
-      smithManoeuvre: smithManoeuvrePayoff,
-      timeSaved: traditionalPayoff.years - smithManoeuvrePayoff.years,
-      interestSaved: traditionalPayoff.totalInterest - (smithManoeuvrePayoff.totalLeveraged || 0),
-      wealthBuilt: smithManoeuvrePayoff.finalPortfolio || 0
-    });
   };
 
-return (
+  const handleYearSelection = (year) => {
+    setSelectedYear(year);
+  };
+
+  const handleCloseYearDetails = () => {
+    setSelectedYear(null);
+  };
+
+  return (
     <div className="max-w-6xl mx-auto p-5 bg-gray-100 min-h-screen text-gray-800">
+      {/* Header */}
       <header className="text-center mb-8 p-6 bg-white rounded-xl shadow-md">
-        <h1 className="text-3xl font-bold text-blue-900">Financial Simulation Calculator</h1>
+        <h1 className="text-3xl font-bold text-blue-900">
+          Financial Simulation Calculator
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Smith Manoeuvre Strategy Analysis Tool
+        </p>
       </header>
+
+      {/* Main Content */}
       <main className="flex flex-col items-center">
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mb-6 p-6 bg-white rounded-xl shadow-md">
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Initial Mortgage:</label>
-            <input type="number" name="initialMortgage" value={formData.initialMortgage} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Mortgage Rate (%):</label>
-            <input type="number" step="0.01" name="mortgageRate" value={formData.mortgageRate} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Amortization Years:</label>
-            <input type="number" name="amortYears" value={formData.amortYears} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">HELOC Rate (%):</label>
-            <input type="number" step="0.01" name="helocRate" value={formData.helocRate} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Tax Rate (%):</label>
-            <input type="number" step="0.01" name="taxRate" value={formData.taxRate} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Annual Return (%):</label>
-            <input type="number" step="0.01" name="annualReturn" value={formData.annualReturn} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Growth Rate (%):</label>
-            <input type="number" step="0.01" name="growthRate" value={formData.growthRate} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Dividend Yield (%):</label>
-            <input type="number" step="0.01" name="dividendYield" value={formData.dividendYield} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Initial TFSA Value:</label>
-            <input type="number" name="initialTfsa" value={formData.initialTfsa} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">TFSA Room Year 1:</label>
-            <input type="number" name="tfsaRoomYear1" value={formData.tfsaRoomYear1} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Annual TFSA Increase:</label>
-            <input type="number" name="annualTfsaIncrease" value={formData.annualTfsaIncrease} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">RRSP Year 1:</label>
-            <input type="number" name="rrspYear1" value={formData.rrspYear1} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">RRSP Ongoing:</label>
-            <input type="number" name="rrspOngoing" value={formData.rrspOngoing} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-2 font-semibold text-gray-700">Initial HELOC Available:</label>
-            <input type="number" name="initialHelocAvailable" value={formData.initialHelocAvailable} onChange={handleChange} className="p-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
-          </div>
-        </form>
-        <button onClick={generateTable} className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 active:translate-y-0 transition-all mb-8">Generate Table</button>
-        
+        {/* Financial Form */}
+        <FinancialForm 
+          formData={formData}
+          onChange={handleChange}
+        />
+
+        {/* Generate Button */}
+        <button 
+          onClick={handleGenerateTable}
+          disabled={isLoading}
+          className={`px-6 py-3 font-semibold rounded-lg shadow-md transition-all mb-8 ${
+            isLoading 
+              ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+              : 'bg-blue-600 text-white hover:bg-blue-700 active:translate-y-0'
+          }`}
+          aria-label="Generate financial simulation table"
+        >
+          {isLoading ? 'Calculating...' : 'Generate Table'}
+        </button>
+
         {/* Comparison Summary */}
-        {comparisonData && (
-          <div className="w-full mb-8 p-6 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl shadow-lg border border-blue-200">
-            <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-              🏠 Traditional vs Smith Manoeuvre Comparison
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Traditional Mortgage */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <div className="flex items-center mb-4">
-                  <div className="w-4 h-4 bg-gray-500 rounded-full mr-3"></div>
-                  <h3 className="text-lg font-semibold text-gray-700">Traditional Mortgage</h3>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payoff Time:</span>
-                    <span className="font-bold text-gray-800">{comparisonData.traditional.years} years</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Monthly Payment:</span>
-                    <span className="font-bold text-gray-800">${comparisonData.traditional.monthlyPayment.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Interest:</span>
-                    <span className="font-bold text-red-600">${comparisonData.traditional.totalInterest.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Final Wealth:</span>
-                    <span className="font-bold text-gray-500">$0</span>
-                  </div>
-                </div>
-              </div>
+        <ComparisonSummary comparisonData={comparisonData} />
 
-              {/* Smith Manoeuvre */}
-              <div className="bg-white p-6 rounded-lg shadow-md border-2 border-green-300 bg-gradient-to-br from-green-50 to-blue-50">
-                <div className="flex items-center mb-4">
-                  <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
-                  <h3 className="text-lg font-semibold text-green-700">Smith Manoeuvre</h3>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payoff Time:</span>
-                    <span className="font-bold text-green-700">{comparisonData.smithManoeuvre.years} years</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Portfolio Value:</span>
-                    <span className="font-bold text-green-600">${comparisonData.smithManoeuvre.finalPortfolio.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Leveraged:</span>
-                    <span className="font-bold text-orange-600">${comparisonData.smithManoeuvre.totalLeveraged.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Net Wealth:</span>
-                    <span className="font-bold text-blue-600">${comparisonData.smithManoeuvre.netWealth.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Data Table */}
+        <DataTable 
+          tableData={tableData}
+          selectedYear={selectedYear}
+          onRowClick={handleYearSelection}
+        />
 
-            {/* Benefits Summary */}
-            <div className="bg-gradient-to-r from-green-100 to-blue-100 p-6 rounded-lg border border-green-200">
-              <h3 className="text-lg font-semibold text-center mb-4 text-gray-800">
-                ⚡ Smith Manoeuvre Benefits
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-green-600 mb-1">
-                    {comparisonData.timeSaved > 0 ? `${comparisonData.timeSaved.toFixed(1)}` : 'Same'} 
-                    {comparisonData.timeSaved > 0 ? ' years' : ''}
-                  </div>
-                  <div className="text-sm text-gray-600">Time Saved</div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-blue-600 mb-1">
-                    ${Math.abs(comparisonData.wealthBuilt).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-600">Wealth Built</div>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-purple-600 mb-1">
-                    {comparisonData.timeSaved > 0 ? `${((comparisonData.timeSaved / comparisonData.traditional.years) * 100).toFixed(0)}%` : '0%'}
-                  </div>
-                  <div className="text-sm text-gray-600">Faster Payoff</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tableData.length > 0 && (
-          <div className="w-full overflow-x-auto bg-white rounded-xl shadow-md p-6 mb-8">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-3 text-left font-semibold text-gray-700 sticky top-0 bg-gray-100">Year</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">Mortgage Balance</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">HELOC Balance</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">HELOC Interest</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">Portfolio Value</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">TFSA Value</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">RRSP Value</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">Tax Refund</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 sticky top-0 bg-gray-100">Principal Built</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tableData.map((row) => (
-                  <tr 
-                    key={row.year} 
-                    className={`hover:bg-gray-50 transition-colors cursor-pointer ${selectedYear === row.year ? 'bg-blue-50' : ''}`}
-                    onClick={() => setSelectedYear(row.year)}
-                  >
-                    <td className="p-3 border-b border-gray-200">{row.year}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.mortgageBalance.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.helocBalance.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.helocInterest.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.portfolioValue.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.tfsaValue.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.rrspValue.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.taxRefund.toLocaleString()}</td>
-                    <td className="p-3 text-right border-b border-gray-200">{row.principalBuilt.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/* Year Details Modal */}
         {selectedYear && (
           <YearDetails 
             year={selectedYear} 
-            onClose={() => setSelectedYear(null)} 
+            onClose={handleCloseYearDetails} 
             tableData={tableData} 
           />
         )}
-
       </main>
     </div>
   );
-}
+};
 
 export default App;

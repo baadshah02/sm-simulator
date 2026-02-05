@@ -118,6 +118,11 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
           {data.description}
         </p>
 
+        {/* Step Number Badge */}
+        <div className="absolute top-2 left-2 w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border-2 border-white">
+          {data.id}
+        </div>
+
         {/* Click indicator */}
         <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-60" />
       </div>
@@ -230,29 +235,57 @@ function YearDetails({ year, onClose, tableData }) {
     },
     {
       id: '8',
+      title: 'Tax-Deductible Interest Refund',
+      type: 'tax',
+      amount: Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString(),
+      description: 'CRA refunds tax on investment interest',
+      tooltipTitle: 'Investment Interest Tax Refund',
+      tooltipContent: `Step 8: The $${calculations.deductibleInterest.toLocaleString()} of tax-deductible investment interest generates an additional tax refund of $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} (${assumptions.taxRate}% × $${calculations.deductibleInterest.toLocaleString()}). This creates a compounding effect - the government pays for part of your investment interest!`,
+      moneyFlow: `CRA returns $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} tax refund on investment interest`
+    },
+    {
+      id: '9',
+      title: 'Reinvest Tax Refund',
+      type: 'invest',
+      amount: Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString(),
+      description: 'Tax refund gets reinvested via HELOC',
+      tooltipTitle: 'Tax Refund Reinvestment',
+      tooltipContent: `Step 9: The $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} tax refund from deductible interest gets re-borrowed from HELOC and reinvested. This creates more tax-deductible debt and accelerates the compounding effect - interest generates tax refunds, which generate more investments, which generate more interest!`,
+      moneyFlow: `Tax refund → HELOC → Non-Registered Investment: $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()}`
+    },
+    {
+      id: '10',
       title: 'Annual Portfolio Result',
       type: 'growth',
       amount: `+${percentChanges.portfolio}%`,
-      description: 'Year-end portfolio growth from strategy',
+      description: 'Year-end portfolio growth from complete strategy',
       tooltipTitle: 'Annual Growth Results',
-      tooltipContent: `Step 8: By year end, the combined effect of tax-advantaged investing, debt conversion, and monthly compounding results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
+      tooltipContent: `Step 10: By year end, the combined effect of tax-advantaged investing, debt conversion, monthly compounding, AND tax refund reinvestment results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
       moneyFlow: `Total portfolio value: $${Math.round(end.portfolio).toLocaleString()} (+${percentChanges.portfolio}%)`
     }
   ];
   }, [row]);
 
-  // Create nodes with proper spacing to avoid overlap
+  // Create properly spaced layout with extra space for edge clarity
   const computedNodes = useMemo(() => {
-    // Better positioning with more space between cards for 8 nodes
+    // Enhanced spacing to make edges more visible
+    const spacingX = 380;  // Even wider horizontal spacing for edge clarity
+    const spacingY = 280;  // Even taller vertical spacing for edge clarity
+    const startX = 100;    // More left margin
+    const startY = 100;    // More top margin
+    
+    // Optimized layout for better edge visibility
     const positions = [
-      { x: 50, y: 50 },      // Initial HELOC Borrowing
-      { x: 350, y: 50 },     // RRSP Tax Refund
-      { x: 650, y: 50 },     // Tax Refund → Mortgage
-      { x: 650, y: 300 },    // Re-borrow for Investment
-      { x: 350, y: 300 },    // Monthly Principal Payment
-      { x: 50, y: 300 },     // Monthly Re-borrow & Invest
-      { x: 50, y: 550 },     // Monthly Cycle Repeat
-      { x: 350, y: 550 }     // Annual Portfolio Result
+      { x: startX, y: startY },                           // 1. Initial HELOC Borrowing
+      { x: startX + spacingX, y: startY },                // 2. RRSP Tax Refund  
+      { x: startX + spacingX * 2, y: startY },            // 3. Tax Refund → Mortgage
+      { x: startX + spacingX * 2, y: startY + spacingY }, // 4. Re-borrow for Investment
+      { x: startX + spacingX, y: startY + spacingY },     // 5. Monthly Principal Payment
+      { x: startX, y: startY + spacingY },                // 6. Monthly Re-borrow & Invest
+      { x: startX, y: startY + spacingY * 2 },            // 7. Monthly Cycle Repeat
+      { x: startX + spacingX, y: startY + spacingY * 2 }, // 8. Tax-Deductible Interest Refund
+      { x: startX + spacingX * 2, y: startY + spacingY * 2 }, // 9. Reinvest Tax Refund
+      { x: startX + spacingX, y: startY + spacingY * 3.2 } // 10. Annual Portfolio Result (more space)
     ];
 
     return stepData.map((step, index) => ({
@@ -265,7 +298,7 @@ function YearDetails({ year, onClose, tableData }) {
     }));
   }, [stepData]);
 
-  // Create flexible animated edges with better label positioning for 8 nodes
+  // Create flexible animated edges with better label positioning for 10 nodes
   const computedEdges = useMemo(() => {
     if (!row) return [];
     
@@ -274,12 +307,15 @@ function YearDetails({ year, onClose, tableData }) {
     
     const edgeConnections = [
       { from: '1', to: '2', label: `$${Math.round((assumptions.rrspContrib + assumptions.tfsaContrib) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
-      { from: '2', to: '3', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
-      { from: '3', to: '4', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'bottom', targetHandle: 'top' },
-      { from: '4', to: '5', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'left', targetHandle: 'right' },
+      { from: '2', to: '3', label: `$${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
+      { from: '3', to: '4', label: `$${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100) / 1000)}K`, sourceHandle: 'bottom', targetHandle: 'top' },
+      { from: '4', to: '5', label: `Converts debt`, sourceHandle: 'left', targetHandle: 'right' },
       { from: '5', to: '6', label: `$${Math.round(calculations.standardPrincipal / 12000)}K/mo`, sourceHandle: 'left', targetHandle: 'right' },
       { from: '6', to: '7', label: `Monthly`, sourceHandle: 'bottom', targetHandle: 'top' },
-      { from: '7', to: '8', label: `12x/year`, sourceHandle: 'right', targetHandle: 'left' }
+      { from: '7', to: '5', label: `Cycle repeats`, sourceHandle: 'top', targetHandle: 'bottom', pathOptions: { offset: 50 } },
+      { from: '7', to: '8', label: `12x/year`, sourceHandle: 'right', targetHandle: 'left' },
+      { from: '8', to: '9', label: `$${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
+      { from: '9', to: '10', label: `All effects combined`, sourceHandle: 'bottom', targetHandle: 'top' }
     ];
 
     return edgeConnections.map((connection, index) => ({
@@ -384,7 +420,7 @@ function YearDetails({ year, onClose, tableData }) {
 
           {/* Main Flow Diagram */}
           <div className="bg-gray-50 p-3 sm:p-6">
-            <div className="h-[700px] relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="h-[1200px] relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <ReactFlow
                 nodes={computedNodes}
                 edges={computedEdges}
