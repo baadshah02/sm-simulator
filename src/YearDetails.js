@@ -207,37 +207,48 @@ function YearDetails({ year, onClose, tableData }) {
     },
     {
       id: '6',
-      title: 'Monthly Cycle Repeat',
-      type: 'cycle',
-      amount: '12x',
-      description: 'Repeat monthly: Principal → Mortgage → Re-borrow',
-      tooltipTitle: 'Monthly Smith Manoeuvre Cycle',
-      tooltipContent: `Step 6: Repeat monthly - Take principal buildup from investments, apply to mortgage, then re-borrow for more investments. This happens 12 times per year, compounding the strategy's effectiveness.`,
-      moneyFlow: `Monthly cycle: Investment principal → Mortgage → HELOC → New investments (12x per year)`
+      title: 'Monthly Re-borrow & Invest',
+      type: 'invest',
+      amount: Math.round(calculations.standardPrincipal / 12).toLocaleString(),
+      description: 'Re-borrow principal from HELOC into non-registered',
+      tooltipTitle: 'Monthly Investment from Principal',
+      tooltipContent: `Step 6: Take the $${Math.round(calculations.standardPrincipal / 12).toLocaleString()} monthly principal payment that was applied to the mortgage, re-borrow it from HELOC (now tax-deductible), and invest it in the non-registered account. This creates additional investment capital each month.`,
+      moneyFlow: `Monthly: HELOC re-advance → Non-Registered Investment: $${Math.round(calculations.standardPrincipal / 12).toLocaleString()}`
     },
     {
       id: '7',
+      title: 'Monthly Cycle Repeat',
+      type: 'cycle',
+      amount: '12x',
+      description: 'Repeat this cycle 12 times per year',
+      tooltipTitle: 'Monthly Smith Manoeuvre Cycle',
+      tooltipContent: `Step 7: This entire process repeats monthly - mortgage payment creates principal, principal gets re-borrowed and invested. This happens 12 times per year, compounding the strategy's effectiveness and building more tax-deductible debt.`,
+      moneyFlow: `Monthly cycle: Mortgage payment → Principal → HELOC → Investment (12x per year)`
+    },
+    {
+      id: '8',
       title: 'Annual Portfolio Result',
       type: 'growth',
       amount: `+${percentChanges.portfolio}%`,
       description: 'Year-end portfolio growth from strategy',
       tooltipTitle: 'Annual Growth Results',
-      tooltipContent: `Step 7: By year end, the combined effect of tax-advantaged investing, debt conversion, and monthly compounding results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
+      tooltipContent: `Step 8: By year end, the combined effect of tax-advantaged investing, debt conversion, and monthly compounding results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
       moneyFlow: `Total portfolio value: $${Math.round(end.portfolio).toLocaleString()} (+${percentChanges.portfolio}%)`
     }
   ], [calculations, assumptions, percentChanges, end.portfolio]);
 
   // Create nodes with proper spacing to avoid overlap
   const computedNodes = useMemo(() => {
-    // Better positioning with more space between cards
+    // Better positioning with more space between cards for 8 nodes
     const positions = [
-      { x: 50, y: 50 },      // Borrow HELOC
-      { x: 350, y: 50 },     // Invest  
-      { x: 650, y: 50 },     // Tax Refund
-      { x: 650, y: 300 },    // Pay Mortgage
-      { x: 350, y: 300 },    // Re-advance
-      { x: 50, y: 300 },     // Additional Investment
-      { x: 350, y: 550 }     // Growth
+      { x: 50, y: 50 },      // Initial HELOC Borrowing
+      { x: 350, y: 50 },     // RRSP Tax Refund
+      { x: 650, y: 50 },     // Tax Refund → Mortgage
+      { x: 650, y: 300 },    // Re-borrow for Investment
+      { x: 350, y: 300 },    // Monthly Principal Payment
+      { x: 50, y: 300 },     // Monthly Re-borrow & Invest
+      { x: 50, y: 550 },     // Monthly Cycle Repeat
+      { x: 350, y: 550 }     // Annual Portfolio Result
     ];
 
     return stepData.map((step, index) => ({
@@ -250,15 +261,16 @@ function YearDetails({ year, onClose, tableData }) {
     }));
   }, [stepData]);
 
-  // Create flexible animated edges with better label positioning
+  // Create flexible animated edges with better label positioning for 8 nodes
   const computedEdges = useMemo(() => {
     const edgeConnections = [
-      { from: '1', to: '2', label: `$${Math.round(calculations.P / 1000)}K`, sourceHandle: 'right', targetHandle: 'left', pathOptions: { offset: 20, curvature: 0.3 } },
-      { from: '2', to: '3', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'right', targetHandle: 'left', pathOptions: { offset: 20, curvature: 0.3 } },
-      { from: '3', to: '4', label: `$${Math.round(calculations.P / 1000)}K`, sourceHandle: 'bottom', targetHandle: 'top', pathOptions: { offset: 30, curvature: 0.4 } },
-      { from: '4', to: '5', label: `$${Math.round(calculations.P / 1000)}K`, sourceHandle: 'left', targetHandle: 'right', pathOptions: { offset: 25, curvature: 0.3 } },
-      { from: '5', to: '6', label: `$${Math.round(calculations.additionalDeductible / 1000)}K`, sourceHandle: 'left', targetHandle: 'right', pathOptions: { offset: 25, curvature: 0.3 } },
-      { from: '6', to: '7', label: `+${percentChanges.portfolio}%`, sourceHandle: 'bottom', targetHandle: 'top', pathOptions: { offset: 30, curvature: 0.4 } }
+      { from: '1', to: '2', label: `$${Math.round((assumptions.rrspContrib + assumptions.tfsaContrib) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
+      { from: '2', to: '3', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
+      { from: '3', to: '4', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'bottom', targetHandle: 'top' },
+      { from: '4', to: '5', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'left', targetHandle: 'right' },
+      { from: '5', to: '6', label: `$${Math.round(calculations.standardPrincipal / 12000)}K/mo`, sourceHandle: 'left', targetHandle: 'right' },
+      { from: '6', to: '7', label: `Monthly`, sourceHandle: 'bottom', targetHandle: 'top' },
+      { from: '7', to: '8', label: `12x/year`, sourceHandle: 'right', targetHandle: 'left' }
     ];
 
     return edgeConnections.map((connection, index) => ({
@@ -297,7 +309,7 @@ function YearDetails({ year, onClose, tableData }) {
       },
       pathOptions: connection.pathOptions
     }));
-  }, [calculations.P, calculations.refund, calculations.additionalDeductible, percentChanges.portfolio]);
+  }, [assumptions.rrspContrib, assumptions.tfsaContrib, calculations.refund, calculations.standardPrincipal, percentChanges.portfolio]);
 
   // Update React Flow when data changes
   useEffect(() => {
