@@ -41,6 +41,13 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
         text: 'text-emerald-700',
         icon: '🚀',
         iconBg: 'bg-emerald-500'
+      },
+      cycle: {
+        gradient: 'from-orange-50 to-orange-100',
+        border: 'border-orange-300',
+        text: 'text-orange-700',
+        icon: '🔄',
+        iconBg: 'bg-orange-500'
       }
     };
     return styles[type] || styles.invest;
@@ -146,79 +153,79 @@ function YearDetails({ year, onClose, tableData }) {
   const { details } = row;
   const { beginning, assumptions, calculations, end, percentChanges } = details;
 
-  // Create step data for visualization
+  // Create detailed step data for accurate Smith Manoeuvre visualization
   const stepData = useMemo(() => [
     {
       id: '1',
-      title: 'Borrow from HELOC',
+      title: 'Initial HELOC Borrowing',
       type: 'borrow',
-      amount: calculations.P.toLocaleString(),
-      description: 'Access investment capital through home equity',
-      tooltipTitle: 'HELOC Borrowing Strategy',
-      tooltipContent: `Borrow $${calculations.P.toLocaleString()} against home equity to fund investments. This creates tax-deductible debt.`,
-      moneyFlow: `$${calculations.P.toLocaleString()} flows from HELOC to investment accounts`
+      amount: (assumptions.rrspContrib + assumptions.tfsaContrib).toLocaleString(),
+      description: 'Borrow from HELOC to fund TFSA/RRSP in Year 1',
+      tooltipTitle: 'Year 1: Initial Investment Funding',
+      tooltipContent: `Step 1: Borrow $${(assumptions.rrspContrib + assumptions.tfsaContrib).toLocaleString()} from HELOC to fully fund RRSP ($${assumptions.rrspContrib.toLocaleString()}) and TFSA ($${assumptions.tfsaContrib.toLocaleString()}) for the year. This creates the initial tax-deductible debt.`,
+      moneyFlow: `HELOC → RRSP: $${assumptions.rrspContrib.toLocaleString()}, HELOC → TFSA: $${assumptions.tfsaContrib.toLocaleString()}`
     },
     {
       id: '2',
-      title: 'Invest in Portfolios',
-      type: 'invest',
-      amount: (assumptions.rrspContrib + assumptions.tfsaContrib + assumptions.initialNonReg).toLocaleString(),
-      description: 'Deploy capital across tax-advantaged accounts',
-      tooltipTitle: 'Investment Allocation',
-      tooltipContent: `Split investments: RRSP $${assumptions.rrspContrib.toLocaleString()}, TFSA $${assumptions.tfsaContrib.toLocaleString()}, Non-Reg $${assumptions.initialNonReg.toLocaleString()}`,
-      moneyFlow: `Funds distributed across RRSP, TFSA, and Non-Registered accounts for optimal growth`
+      title: 'RRSP Tax Refund',
+      type: 'tax',
+      amount: Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString(),
+      description: 'RRSP contribution triggers government tax refund',
+      tooltipTitle: 'Tax Refund Result',
+      tooltipContent: `Step 2: The $${assumptions.rrspContrib.toLocaleString()} RRSP contribution generates a tax refund of $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} at ${assumptions.taxRate}% tax rate. This is the government's contribution to your strategy.`,
+      moneyFlow: `Government returns $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} via tax refund`
     },
     {
       id: '3',
-      title: 'Receive Tax Refund',
-      type: 'tax',
-      amount: calculations.refund.toLocaleString(),
-      description: 'Government returns taxes via RRSP contribution',
-      tooltipTitle: 'Tax Refund Benefits',
-      tooltipContent: `Receive $${calculations.refund.toLocaleString()} refund from RRSP contribution and deductible HELOC interest.`,
-      moneyFlow: `Government returns $${calculations.refund.toLocaleString()} through tax savings`
+      title: 'Tax Refund → Mortgage',
+      type: 'mortgage',
+      amount: Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString(),
+      description: 'Apply tax refund to mortgage principal',
+      tooltipTitle: 'Mortgage Principal Payment',
+      tooltipContent: `Step 3: Apply the entire $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} tax refund directly to mortgage principal. This reduces non-deductible debt and creates available HELOC room.`,
+      moneyFlow: `Tax refund → Mortgage principal reduction: $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}`
     },
     {
       id: '4',
-      title: 'Pay Down Mortgage',
-      type: 'mortgage',
-      amount: calculations.P.toLocaleString(),
-      description: 'Reduce non-deductible debt with tax refund',
-      tooltipTitle: 'Mortgage Principal Payment',
-      tooltipContent: `Apply $${calculations.refund.toLocaleString()} refund plus dividends toward mortgage principal reduction.`,
-      moneyFlow: `$${calculations.P.toLocaleString()} applied to reduce mortgage balance`
+      title: 'Re-borrow for Investment',
+      type: 'borrow',
+      amount: Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString(),
+      description: 'Borrow paid-down principal for non-reg investment',
+      tooltipTitle: 'Debt Conversion Strategy',
+      tooltipContent: `Step 4: Re-borrow the $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} just paid down on the mortgage from HELOC. This converts non-deductible mortgage debt into tax-deductible investment debt.`,
+      moneyFlow: `HELOC → Non-Registered Investment: $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}`
     },
     {
       id: '5',
-      title: 'Re-advance from HELOC',
-      type: 'borrow',
-      amount: calculations.P.toLocaleString(),
-      description: 'Convert mortgage principal to deductible debt',
-      tooltipTitle: 'Debt Conversion Strategy',
-      tooltipContent: `Re-borrow $${calculations.P.toLocaleString()} against the paid-down mortgage principal. This debt is now tax-deductible.`,
-      moneyFlow: `$${calculations.P.toLocaleString()} re-borrowed as tax-deductible investment debt`
+      title: 'Monthly Principal Payment',
+      type: 'mortgage',
+      amount: Math.round(calculations.standardPrincipal / 12).toLocaleString(),
+      description: 'Monthly mortgage principal becomes available',
+      tooltipTitle: 'Monthly Mortgage Principal Cycle',
+      tooltipContent: `Step 5: Each month, approximately $${Math.round(calculations.standardPrincipal / 12).toLocaleString()} of your mortgage payment goes to principal (vs interest). This principal amount becomes available HELOC room that can be re-borrowed for investments. Dividends add a small additional amount (~$${Math.round((assumptions.initialNonReg * (assumptions.dividendYield / 100)) / 12).toLocaleString()}/month initially).`,
+      moneyFlow: `Monthly mortgage principal: ~$${Math.round(calculations.standardPrincipal / 12).toLocaleString()}/month becomes available + small dividend income`
     },
     {
       id: '6',
-      title: 'Additional Investment',
-      type: 'invest',
-      amount: calculations.additionalDeductible.toLocaleString(),
-      description: 'Deploy re-borrowed capital for growth',
-      tooltipTitle: 'Compound Investment Strategy',
-      tooltipContent: `Invest additional $${calculations.additionalDeductible.toLocaleString()} to create future dividends and growth for the next cycle.`,
-      moneyFlow: `Additional investment creates compound growth and future dividend income`
+      title: 'Monthly Cycle Repeat',
+      type: 'cycle',
+      amount: '12x',
+      description: 'Repeat monthly: Principal → Mortgage → Re-borrow',
+      tooltipTitle: 'Monthly Smith Manoeuvre Cycle',
+      tooltipContent: `Step 6: Repeat monthly - Take principal buildup from investments, apply to mortgage, then re-borrow for more investments. This happens 12 times per year, compounding the strategy's effectiveness.`,
+      moneyFlow: `Monthly cycle: Investment principal → Mortgage → HELOC → New investments (12x per year)`
     },
     {
       id: '7',
-      title: 'Portfolio Growth',
+      title: 'Annual Portfolio Result',
       type: 'growth',
       amount: `+${percentChanges.portfolio}%`,
-      description: 'Portfolio compounds and generates returns',
-      tooltipTitle: 'Compound Growth Results',
-      tooltipContent: `Total portfolio growth of ${percentChanges.portfolio}% creates wealth through compound returns and tax-efficient investing.`,
-      moneyFlow: `Portfolio generates ${percentChanges.portfolio}% return, building long-term wealth`
+      description: 'Year-end portfolio growth from strategy',
+      tooltipTitle: 'Annual Growth Results',
+      tooltipContent: `Step 7: By year end, the combined effect of tax-advantaged investing, debt conversion, and monthly compounding results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
+      moneyFlow: `Total portfolio value: $${Math.round(end.portfolio).toLocaleString()} (+${percentChanges.portfolio}%)`
     }
-  ], [calculations, assumptions, percentChanges]);
+  ], [calculations, assumptions, percentChanges, end.portfolio]);
 
   // Create nodes with proper spacing to avoid overlap
   const computedNodes = useMemo(() => {
@@ -576,6 +583,7 @@ function YearDetails({ year, onClose, tableData }) {
                     {activeInfoPanel.type === 'tax' && 'Government subsidizes investment through tax savings'}
                     {activeInfoPanel.type === 'mortgage' && 'Converts non-deductible debt to investment capital'}
                     {activeInfoPanel.type === 'growth' && 'Demonstrates compound wealth creation power'}
+                    {activeInfoPanel.type === 'cycle' && 'Monthly repetition accelerates wealth building through compounding'}
                   </div>
                 </div>
               </div>
