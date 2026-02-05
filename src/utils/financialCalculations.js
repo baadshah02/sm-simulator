@@ -115,37 +115,64 @@ export const generateFinancialData = (formData) => {
     const tfsaContrib = tfsaHeloc + tfsaSavings;
     const nonDeductibleFromP = isYear1 ? 0 : rrspContrib;
     const initialKick = isYear1 ? initialHelocAvailable : 0;
-    const initialNonReg = isYear1 ? initialKick - tfsaHeloc - rrspContrib : 0;
+    const initialNonReg = isYear1 ? Math.max(0, initialKick - tfsaHeloc - rrspContrib) : 0;
 
-    currentDeductible += initialNonReg;
-    currentNonReg += initialNonReg;
-    currentHeloc += initialKick;
+    // Only update balances if we actually have HELOC borrowing
+    if (initialKick > 0) {
+      currentDeductible += initialNonReg;
+      currentNonReg += initialNonReg;
+      currentHeloc += initialKick;
+    }
 
-    // Calculate principal built (P)
+    // Calculate principal built (P) - but only if we have HELOC available or RRSP contributions
     const standardPrincipal = annualPayment - currentMortgage * mortgageRate;
-    const a = dividendYield / 2;
-    const b = taxRate * helocRate / 2;
-    const left = 1 - a - b;
-    const rightAdd = a + b;
-    const constant = standardPrincipal + dividendYield * currentNonReg + rrspContrib * taxRate + taxRate * helocRate * currentDeductible;
+    let P = standardPrincipal; // Default to standard principal payment
+    let a = 0, b = 0, left = 1, rightAdd = 0, constant = standardPrincipal;
     const dividendsThisYear = Math.round(dividendYield * currentNonReg);
-    let P = (constant + rightAdd * nonDeductibleFromP) / left;
+    
+    // Apply Smith Manoeuvre calculations - the strategy works even with $0 initial HELOC 
+    // because mortgage payments create HELOC credit for reinvestment
+    const hasInitialActivity = initialHelocAvailable > 0 || rrspContrib > 0;
+    const hasOngoingActivity = hasInitialActivity || currentDeductible > 0 || standardPrincipal > 0;
+    
+    if (hasOngoingActivity) {
+      a = dividendYield / 2;
+      b = taxRate * helocRate / 2;
+      left = 1 - a - b;
+      rightAdd = a + b;
+      constant = standardPrincipal + dividendYield * currentNonReg + rrspContrib * taxRate + taxRate * helocRate * currentDeductible;
+      P = (constant + rightAdd * nonDeductibleFromP) / left;
+    }
+    
     P = Math.min(P, currentMortgage);
 
-    // Calculate values with proper tax-deductible vs non-deductible interest split
-    const additionalDeductible = P - nonDeductibleFromP;
+    // Calculate additional deductible debt from mortgage payment reinvestment
+    const additionalDeductible = Math.max(0, P - nonDeductibleFromP);
     const averageDeductible = currentDeductible + additionalDeductible / 2;
     
-    // HELOC Interest Breakdown:
-    // 1. Deductible portion: Interest on non-registered investments (gets re-borrowed + tax refund)
-    const deductibleInterest = helocRate * averageDeductible;
+    // HELOC Interest Breakdown - only calculate if we have actual HELOC balances or activity
+    let deductibleInterest = 0;
+    let nonDeductibleInterest = 0;
+    let helocInterest = 0;
     
-    // 2. Non-deductible portion: Interest on TFSA/RRSP funding (paid from savings, no tax benefit)
-    const nonDeductibleBalance = currentHeloc - currentDeductible - additionalDeductible / 2;
-    const nonDeductibleInterest = Math.max(0, helocRate * nonDeductibleBalance);
+    const willHaveHelocBalance = currentHeloc + (hasInitialActivity ? initialKick : 0) + (hasOngoingActivity ? P : 0) > 0;
     
-    // Total HELOC interest charged
-    const helocInterest = deductibleInterest + nonDeductibleInterest;
+    if (willHaveHelocBalance || averageDeductible > 0) {
+      // 1. Deductible portion: Interest on non-registered investments (gets re-borrowed + tax refund)
+      deductibleInterest = helocRate * averageDeductible;
+      
+      // 2. Non-deductible portion: ONLY Interest on TFSA/RRSP funding (paid from savings, no tax benefit)
+      // Calculate what portion of HELOC was used for non-deductible purposes (TFSA/RRSP)
+      const tfsaHelocUsed = hasInitialActivity ? tfsaHeloc : 0;
+      const rrspHelocUsed = hasInitialActivity ? Math.min(rrspContrib, Math.max(0, initialKick - tfsaHeloc)) : 0;
+      const totalNonDeductibleUsed = tfsaHelocUsed + rrspHelocUsed;
+      
+      // Non-deductible interest is ONLY on TFSA/RRSP portions, NOT on mortgage principal reinvestment
+      nonDeductibleInterest = Math.max(0, helocRate * totalNonDeductibleUsed);
+      
+      // Total HELOC interest charged
+      helocInterest = deductibleInterest + nonDeductibleInterest;
+    }
     
     // Tax refund ONLY includes: RRSP contribution + deductible interest (NOT non-deductible interest)
     const refund = rrspContrib * taxRate + deductibleInterest * taxRate;
@@ -168,11 +195,29 @@ export const generateFinancialData = (formData) => {
     currentTfsa = tfsaValue;
     currentRrsp = rrspValue;
     currentNonReg = nonRegValue;
-    currentDeductible += additionalDeductible;
+    
+    // Update HELOC-related balances based on activity type
+    if (hasInitialActivity) {
+      // Initial borrowing for TFSA/RRSP/Non-Reg
+      // Already handled above with initialKick
+    }
+    
+    if (hasOngoingActivity && additionalDeductible > 0) {
+      // Ongoing reinvestment from mortgage payments
+      currentDeductible += additionalDeductible;
+      currentHeloc += P;
+      if (currentHeloc > totalLimit) currentHeloc = totalLimit; // Cap at implied home equity
+    } else if (!hasOngoingActivity) {
+      // Traditional mortgage only - no HELOC activity
+      currentHeloc += 0; // No change to HELOC
+    } else {
+      // Has activity but no additional deductible (shouldn't happen normally)
+      currentHeloc += P;
+      if (currentHeloc > totalLimit) currentHeloc = totalLimit;
+    }
+    
     currentMortgage -= P;
-    currentHeloc += P;
     if (currentMortgage < 0) currentMortgage = 0;
-    if (currentHeloc > totalLimit) currentHeloc = totalLimit; // Cap at implied home equity
 
     data.push({
       year,

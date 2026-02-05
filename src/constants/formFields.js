@@ -85,7 +85,7 @@ export const DEFAULT_FORM_DATA = {
   taxRate: 53.5,
   annualReturn: 7,
   growthRate: 7,
-  dividendYield: 4,
+  dividendYield: 1.6,
   initialTfsa: 955 * 39.79,
   tfsaRoomYear1: 42000,
   annualTfsaIncrease: 7000,

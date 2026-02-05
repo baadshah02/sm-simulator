@@ -7,6 +7,52 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
 
   const getNodeStyle = (type) => {
     const styles = {
+      // TFSA Account Theme - Modern Teal (Tax-Free = Freedom)
+      tfsa: {
+        gradient: 'from-teal-50 to-cyan-100',
+        border: 'border-teal-300',
+        text: 'text-teal-700',
+        icon: '💎',
+        iconBg: 'bg-teal-500'
+      },
+      tfsaFlow: {
+        gradient: 'from-teal-50 to-teal-100',
+        border: 'border-teal-300',
+        text: 'text-teal-700',
+        icon: '🏦',
+        iconBg: 'bg-teal-500'
+      },
+      // RRSP Account Theme - Modern Indigo (Tax-Deferred = Wise/Mature)  
+      rrsp: {
+        gradient: 'from-indigo-50 to-purple-100',
+        border: 'border-indigo-300',
+        text: 'text-indigo-700',
+        icon: '🛡️',
+        iconBg: 'bg-indigo-500'
+      },
+      rrspFlow: {
+        gradient: 'from-indigo-50 to-indigo-100',
+        border: 'border-indigo-300',
+        text: 'text-indigo-700',
+        icon: '💰',
+        iconBg: 'bg-indigo-500'
+      },
+      // Non-Registered Account Theme - Modern Amber (Active Trading = Energy)
+      nonReg: {
+        gradient: 'from-amber-50 to-orange-100',
+        border: 'border-amber-300',
+        text: 'text-amber-700',
+        icon: '⚡',
+        iconBg: 'bg-amber-500'
+      },
+      nonRegFlow: {
+        gradient: 'from-amber-50 to-amber-100',
+        border: 'border-amber-300',
+        text: 'text-amber-700',
+        icon: '📈',
+        iconBg: 'bg-amber-500'
+      },
+      // Legacy types for other cards
       borrow: {
         gradient: 'from-red-50 to-red-100',
         border: 'border-red-300',
@@ -109,7 +155,7 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
         {/* Amount */}
         {data.amount && (
           <div className={`text-center text-sm sm:text-lg font-bold ${style.text} mb-1 sm:mb-2`}>
-            {data.amount.toString().includes('%') ? data.amount : `$${data.amount}`}
+            {data.amount}
           </div>
         )}
 
@@ -118,10 +164,6 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
           {data.description}
         </p>
 
-        {/* Step Number Badge */}
-        <div className="absolute top-2 left-2 w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border-2 border-white">
-          {data.id}
-        </div>
 
         {/* Click indicator */}
         <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-60" />
@@ -131,16 +173,19 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
   );
 };
 
-const nodeTypes = { financial: FinancialNode };
-
 function YearDetails({ year, onClose, tableData }) {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [, setNodes, onNodesChange] = useNodesState([]);
+  const [, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeInfoPanel, setActiveInfoPanel] = useState(null);
   
   const handleShowDetails = (nodeData) => {
     setActiveInfoPanel(activeInfoPanel?.id === nodeData.id ? null : nodeData);
   };
+
+  // Memoize nodeTypes to prevent React Flow warnings
+  const nodeTypes = useMemo(() => ({
+    financial: (props) => <FinancialNode {...props} onShowDetails={handleShowDetails} />
+  }), [handleShowDetails]);
 
   // Close on Escape key
   useEffect(() => {
@@ -155,205 +200,268 @@ function YearDetails({ year, onClose, tableData }) {
   const row = tableData.find(r => r.year === year);
   
   // All hooks must be called before any conditional returns
-  // Create detailed step data for accurate Smith Manoeuvre visualization
+  // Create detailed step-by-step cards showing complete money flow
   const stepData = useMemo(() => {
     if (!row) return [];
     
     const { details } = row;
     const { beginning, assumptions, calculations, end, percentChanges } = details;
     
+    // Detailed step-by-step flow cards
     return [
-    {
-      id: '1',
-      title: 'Initial HELOC Borrowing',
-      type: 'borrow',
-      amount: (assumptions.rrspContrib + assumptions.tfsaContrib).toLocaleString(),
-      description: 'Borrow from HELOC to fund TFSA/RRSP in Year 1',
-      tooltipTitle: 'Year 1: Initial Investment Funding',
-      tooltipContent: `Step 1: Borrow $${(assumptions.rrspContrib + assumptions.tfsaContrib).toLocaleString()} from HELOC to fully fund RRSP ($${assumptions.rrspContrib.toLocaleString()}) and TFSA ($${assumptions.tfsaContrib.toLocaleString()}) for the year. This creates the initial tax-deductible debt.`,
-      moneyFlow: `HELOC → RRSP: $${assumptions.rrspContrib.toLocaleString()}, HELOC → TFSA: $${assumptions.tfsaContrib.toLocaleString()}`
-    },
-    {
-      id: '2',
-      title: 'RRSP Tax Refund',
-      type: 'tax',
-      amount: Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString(),
-      description: 'RRSP contribution triggers government tax refund',
-      tooltipTitle: 'Tax Refund Result',
-      tooltipContent: `Step 2: The $${assumptions.rrspContrib.toLocaleString()} RRSP contribution generates a tax refund of $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} at ${assumptions.taxRate}% tax rate. This is the government's contribution to your strategy.`,
-      moneyFlow: `Government returns $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} via tax refund`
-    },
-    {
-      id: '3',
-      title: 'Tax Refund → Mortgage',
-      type: 'mortgage',
-      amount: Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString(),
-      description: 'Apply tax refund to mortgage principal',
-      tooltipTitle: 'Mortgage Principal Payment',
-      tooltipContent: `Step 3: Apply the entire $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} tax refund directly to mortgage principal. This reduces non-deductible debt and creates available HELOC room.`,
-      moneyFlow: `Tax refund → Mortgage principal reduction: $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}`
-    },
-    {
-      id: '4',
-      title: 'Re-borrow for Investment',
-      type: 'borrow',
-      amount: Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString(),
-      description: 'Borrow paid-down principal for non-reg investment',
-      tooltipTitle: 'Debt Conversion Strategy',
-      tooltipContent: `Step 4: Re-borrow the $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} just paid down on the mortgage from HELOC. This converts non-deductible mortgage debt into tax-deductible investment debt.`,
-      moneyFlow: `HELOC → Non-Registered Investment: $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}`
-    },
-    {
-      id: '5',
-      title: 'Monthly Principal Payment',
-      type: 'mortgage',
-      amount: Math.round(calculations.standardPrincipal / 12).toLocaleString(),
-      description: 'Monthly mortgage principal becomes available',
-      tooltipTitle: 'Monthly Mortgage Principal Cycle',
-      tooltipContent: `Step 5: Each month, approximately $${Math.round(calculations.standardPrincipal / 12).toLocaleString()} of your mortgage payment goes to principal (vs interest). This principal amount becomes available HELOC room that can be re-borrowed for investments. Dividends add a small additional amount (~$${Math.round((assumptions.initialNonReg * (assumptions.dividendYield / 100)) / 12).toLocaleString()}/month initially).`,
-      moneyFlow: `Monthly mortgage principal: ~$${Math.round(calculations.standardPrincipal / 12).toLocaleString()}/month becomes available + small dividend income`
-    },
-    {
-      id: '6',
-      title: 'Monthly Re-borrow & Invest',
-      type: 'invest',
-      amount: Math.round(calculations.standardPrincipal / 12).toLocaleString(),
-      description: 'Re-borrow principal from HELOC into non-registered',
-      tooltipTitle: 'Monthly Investment from Principal',
-      tooltipContent: `Step 6: Take the $${Math.round(calculations.standardPrincipal / 12).toLocaleString()} monthly principal payment that was applied to the mortgage, re-borrow it from HELOC (now tax-deductible), and invest it in the non-registered account. This creates additional investment capital each month.`,
-      moneyFlow: `Monthly: HELOC re-advance → Non-Registered Investment: $${Math.round(calculations.standardPrincipal / 12).toLocaleString()}`
-    },
-    {
-      id: '7',
-      title: 'Monthly Cycle Repeat',
-      type: 'cycle',
-      amount: '12x',
-      description: 'Repeat this cycle 12 times per year',
-      tooltipTitle: 'Monthly Smith Manoeuvre Cycle',
-      tooltipContent: `Step 7: This entire process repeats monthly - mortgage payment creates principal, principal gets re-borrowed and invested. This happens 12 times per year, compounding the strategy's effectiveness and building more tax-deductible debt.`,
-      moneyFlow: `Monthly cycle: Mortgage payment → Principal → HELOC → Investment (12x per year)`
-    },
-    {
-      id: '8',
-      title: 'Tax-Deductible Interest Refund',
-      type: 'tax',
-      amount: Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString(),
-      description: 'CRA refunds tax on investment interest',
-      tooltipTitle: 'Investment Interest Tax Refund',
-      tooltipContent: `Step 8: The $${calculations.deductibleInterest.toLocaleString()} of tax-deductible investment interest generates an additional tax refund of $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} (${assumptions.taxRate}% × $${calculations.deductibleInterest.toLocaleString()}). This creates a compounding effect - the government pays for part of your investment interest!`,
-      moneyFlow: `CRA returns $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} tax refund on investment interest`
-    },
-    {
-      id: '9',
-      title: 'Reinvest Tax Refund',
-      type: 'invest',
-      amount: Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString(),
-      description: 'Tax refund gets reinvested via HELOC',
-      tooltipTitle: 'Tax Refund Reinvestment',
-      tooltipContent: `Step 9: The $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} tax refund from deductible interest gets re-borrowed from HELOC and reinvested. This creates more tax-deductible debt and accelerates the compounding effect - interest generates tax refunds, which generate more investments, which generate more interest!`,
-      moneyFlow: `Tax refund → HELOC → Non-Registered Investment: $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()}`
-    },
-    {
-      id: '10',
-      title: 'Annual Portfolio Result',
-      type: 'growth',
-      amount: `+${percentChanges.portfolio}%`,
-      description: 'Year-end portfolio growth from complete strategy',
-      tooltipTitle: 'Annual Growth Results',
-      tooltipContent: `Step 10: By year end, the combined effect of tax-advantaged investing, debt conversion, monthly compounding, AND tax refund reinvestment results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
-      moneyFlow: `Total portfolio value: $${Math.round(end.portfolio).toLocaleString()} (+${percentChanges.portfolio}%)`
-    }
-  ];
+      // Step 1: Initial HELOC borrows for TFSA
+      {
+        id: 'step1-heloc-tfsa',
+        title: 'Step 1: Fund TFSA',
+        type: 'borrow',
+        amount: `$${assumptions.tfsaContrib.toLocaleString()}`,
+        description: 'HELOC → TFSA Investment',
+        tooltipTitle: 'Step 1: HELOC Funds TFSA',
+        tooltipContent: `Start of year: HELOC borrows $${assumptions.tfsaContrib.toLocaleString()} to fund your TFSA contribution. This creates immediate tax-free investment growth potential.`,
+        moneyFlow: `HELOC Credit: $${assumptions.tfsaContrib.toLocaleString()} → TFSA Account`
+      },
+      
+      // Step 2: Initial HELOC borrows for RRSP  
+      {
+        id: 'step2-heloc-rrsp',
+        title: 'Step 2: Fund RRSP',
+        type: 'borrow',
+        amount: `$${assumptions.rrspContrib.toLocaleString()}`,
+        description: 'HELOC → RRSP Investment',
+        tooltipTitle: 'Step 2: HELOC Funds RRSP',
+        tooltipContent: `Start of year: HELOC borrows $${assumptions.rrspContrib.toLocaleString()} to fund your RRSP contribution. This generates immediate tax refund of $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}.`,
+        moneyFlow: `HELOC Credit: $${assumptions.rrspContrib.toLocaleString()} → RRSP Account`
+      },
+      
+      // Step 3: Initial non-registered investment funding
+      {
+        id: 'step3-heloc-nonreg-initial',
+        title: 'Step 3: Fund Non-Reg',
+        type: 'invest',
+        amount: `$${Math.round(assumptions.initialNonReg).toLocaleString()}`,
+        description: 'HELOC → Non-Registered',
+        tooltipTitle: 'Step 3: Initial Non-Registered Investment',
+        tooltipContent: `Beginning of year: You borrow $${Math.round(assumptions.initialNonReg).toLocaleString()} from the HELOC to purchase initial non-registered investments. This creates tax-deductible investment debt from day one.`,
+        moneyFlow: `HELOC Credit: $${Math.round(assumptions.initialNonReg).toLocaleString()} → Non-Registered Account`
+      },
+      
+      // Step 4: Government provides tax refunds
+      {
+        id: 'step4-tax-refunds',
+        title: 'Step 4: Tax Refunds',
+        type: 'tax',
+        amount: `$${calculations.refund.toLocaleString()}`,
+        description: 'CRA → Your Bank Account',
+        tooltipTitle: 'Step 4: Government Tax Refunds',
+        tooltipContent: `Tax time: Government provides $${calculations.refund.toLocaleString()} in tax refunds from RRSP contributions and investment interest deductions. This is free money from the government!`,
+        moneyFlow: `CRA Tax Refund: $${calculations.refund.toLocaleString()} → Bank Account`
+      },
+      
+      // Step 5: Use tax refunds for mortgage principal
+      {
+        id: 'step5-pay-mortgage',
+        title: 'Step 5: Pay Mortgage',
+        type: 'mortgage',
+        amount: `$${calculations.refund.toLocaleString()}`,
+        description: 'Bank → Mortgage Principal',
+        tooltipTitle: 'Step 5: Mortgage Principal Payment',
+        tooltipContent: `Use tax refunds to pay down $${calculations.refund.toLocaleString()} of mortgage principal. This converts non-deductible debt to available HELOC credit for tax-deductible investments.`,
+        moneyFlow: `Bank Account: $${calculations.refund.toLocaleString()} → Mortgage Principal Payment`
+      },
+      
+      // Step 6: Re-borrow for non-registered investments
+      {
+        id: 'step6-heloc-nonreg',
+        title: 'Step 6: Reinvest Credits',
+        type: 'invest',
+        amount: `$${Math.round(calculations.P).toLocaleString()}`,
+        description: 'HELOC → Non-Registered',
+        tooltipTitle: 'Step 6: Additional Non-Registered Investment',
+        tooltipContent: `Throughout year: You borrow an additional $${Math.round(calculations.P).toLocaleString()} from the HELOC to purchase more non-registered investments. Interest on this investment debt is tax-deductible, creating ongoing tax benefits.`,
+        moneyFlow: `HELOC Credit: $${Math.round(calculations.P).toLocaleString()} → Non-Registered Investments`
+      },
+      
+      // Final Results: Investment Account Values
+      {
+        id: 'result-tfsa',
+        title: 'TFSA Final Value',
+        type: 'tfsa',
+        amount: `$${Math.round(end.tfsa).toLocaleString()}`,
+        description: 'Tax-Free Growth Result',
+        tooltipTitle: 'TFSA Year-End Value',
+        tooltipContent: `End of year: TFSA grows to $${Math.round(end.tfsa).toLocaleString()} through ${assumptions.annualReturn}% investment growth. All gains are completely tax-free forever!`,
+        moneyFlow: `Investment Growth: $${assumptions.tfsaContrib.toLocaleString()} → $${Math.round(end.tfsa).toLocaleString()}`
+      },
+      
+      {
+        id: 'result-rrsp',
+        title: 'RRSP Final Value',
+        type: 'rrsp',
+        amount: `$${Math.round(end.rrsp).toLocaleString()}`,
+        description: 'Tax-Deferred Growth Result', 
+        tooltipTitle: 'RRSP Year-End Value',
+        tooltipContent: `End of year: RRSP grows to $${Math.round(end.rrsp).toLocaleString()} through ${assumptions.annualReturn}% investment growth. Withdrawals in retirement will be at lower tax rates.`,
+        moneyFlow: `Investment Growth: $${assumptions.rrspContrib.toLocaleString()} → $${Math.round(end.rrsp).toLocaleString()}`
+      },
+      
+      {
+        id: 'result-nonreg',
+        title: 'Non-Reg Final Value',
+        type: 'nonReg',
+        amount: `$${Math.round(end.nonReg).toLocaleString()}`,
+        description: 'Tax-Deductible Growth Result',
+        tooltipTitle: 'Non-Registered Year-End Value', 
+        tooltipContent: `End of year: Non-registered account grows to $${Math.round(end.nonReg).toLocaleString()} through tax refund reinvestment and ${assumptions.annualReturn}% growth. HELOC interest is tax-deductible!`,
+        moneyFlow: `Investment Growth: Tax refunds → $${Math.round(end.nonReg).toLocaleString()}`
+      }
+    ];
   }, [row]);
 
-  // Create properly spaced layout with extra space for edge clarity
+  // Create step-by-step positioning for 8 detailed cards with increased spacing
   const computedNodes = useMemo(() => {
-    // Enhanced spacing to make edges more visible
-    const spacingX = 380;  // Even wider horizontal spacing for edge clarity
-    const spacingY = 280;  // Even taller vertical spacing for edge clarity
-    const startX = 100;    // More left margin
-    const startY = 100;    // More top margin
-    
-    // Optimized layout for better edge visibility
-    const positions = [
-      { x: startX, y: startY },                           // 1. Initial HELOC Borrowing
-      { x: startX + spacingX, y: startY },                // 2. RRSP Tax Refund  
-      { x: startX + spacingX * 2, y: startY },            // 3. Tax Refund → Mortgage
-      { x: startX + spacingX * 2, y: startY + spacingY }, // 4. Re-borrow for Investment
-      { x: startX + spacingX, y: startY + spacingY },     // 5. Monthly Principal Payment
-      { x: startX, y: startY + spacingY },                // 6. Monthly Re-borrow & Invest
-      { x: startX, y: startY + spacingY * 2 },            // 7. Monthly Cycle Repeat
-      { x: startX + spacingX, y: startY + spacingY * 2 }, // 8. Tax-Deductible Interest Refund
-      { x: startX + spacingX * 2, y: startY + spacingY * 2 }, // 9. Reinvest Tax Refund
-      { x: startX + spacingX, y: startY + spacingY * 3.2 } // 10. Annual Portfolio Result (more space)
-    ];
+    const spacingX = 350;  // Increased from 280 to 350 for better horizontal spacing
+    const spacingY = 220;  // Increased from 180 to 220 for better vertical spacing
+    const startX = 80;     // Increased from 50 to 80 for better margins
+    const startY = 80;     // Increased from 50 to 80 for better margins
 
-    return stepData.map((step, index) => ({
+    // Step-by-step flow positioning for 9 cards (6 steps + 3 results) with adjusted right positioning
+    const positionById = {
+      // Row 1: Initial Funding Steps (3 cards)
+      'step1-heloc-tfsa': { x: startX, y: startY },                           // Step 1: Fund TFSA
+      'step2-heloc-rrsp': { x: startX + spacingX, y: startY },                // Step 2: Fund RRSP 
+      'step3-heloc-nonreg-initial': { x: startX + spacingX * 3, y: startY },  // Step 3: Fund Non-Reg (moved further right)
+      
+      // Row 2: Tax Refunds (moved further right)
+      'step4-tax-refunds': { x: startX + spacingX * 2, y: startY + spacingY },    // Step 4: Tax Refunds 
+      
+      // Row 3: Mortgage Payment (moved further right)
+      'step5-pay-mortgage': { x: startX + spacingX * 2, y: startY + spacingY * 2 }, // Step 5: Pay Mortgage
+      
+      // Row 4: Reinvest Credits (moved further right)
+      'step6-heloc-nonreg': { x: startX + spacingX * 2, y: startY + spacingY * 3 }, // Step 6: Reinvest Credits
+      
+      // Row 5: Final Results (non-reg moved further right to align)
+      'result-tfsa': { x: startX, y: startY + spacingY * 4 },                 // TFSA Final Value
+      'result-rrsp': { x: startX + spacingX, y: startY + spacingY * 4 },      // RRSP Final Value  
+      'result-nonreg': { x: startX + spacingX * 3, y: startY + spacingY * 4 } // Non-Reg Final Value (moved further right)
+    };
+
+    return stepData.map((step) => ({
       id: step.id,
-      position: positions[index],
+      position: positionById[step.id] || { x: startX, y: startY },
       data: step,
       type: 'financial',
-      draggable: false,
-      selectable: false,
+      draggable: true,      // Enable user dragging
+      selectable: true,     // Enable selection
+      deletable: false,     // Prevent accidental deletion
+      connectable: false,   // Prevent connecting new edges accidentally
     }));
   }, [stepData]);
 
-  // Create flexible animated edges with better label positioning for 10 nodes
+  // Create step-by-step edge connections for the 8-card flow
   const computedEdges = useMemo(() => {
     if (!row) return [];
     
     const { details } = row;
-    const { assumptions, calculations, percentChanges } = details;
+    const { assumptions, calculations } = details;
     
+    // Step-by-step connections showing money flow chronologically (updated for 6-step flow)
     const edgeConnections = [
-      { from: '1', to: '2', label: `$${Math.round((assumptions.rrspContrib + assumptions.tfsaContrib) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
-      { from: '2', to: '3', label: `$${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
-      { from: '3', to: '4', label: `$${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100) / 1000)}K`, sourceHandle: 'bottom', targetHandle: 'top' },
-      { from: '4', to: '5', label: `Converts debt`, sourceHandle: 'left', targetHandle: 'right' },
-      { from: '5', to: '6', label: `$${Math.round(calculations.standardPrincipal / 12000)}K/mo`, sourceHandle: 'left', targetHandle: 'right' },
-      { from: '6', to: '7', label: `Monthly`, sourceHandle: 'bottom', targetHandle: 'top' },
-      { from: '7', to: '5', label: `Cycle repeats`, sourceHandle: 'top', targetHandle: 'bottom', pathOptions: { offset: 50 } },
-      { from: '7', to: '8', label: `12x/year`, sourceHandle: 'right', targetHandle: 'left' },
-      { from: '8', to: '9', label: `$${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
-      { from: '9', to: '10', label: `All effects combined`, sourceHandle: 'bottom', targetHandle: 'top' }
+      // Step 2 to 4: RRSP generates tax refunds
+      { from: 'step2-heloc-rrsp', to: 'step4-tax-refunds', label: 'Tax refund' },
+      
+      // Step 4 to 5: Tax refunds pay mortgage
+      { from: 'step4-tax-refunds', to: 'step5-pay-mortgage', label: `$${Math.round(calculations.refund / 1000)}K refund` },
+      
+      // Step 5 to 6: Mortgage payment creates HELOC credit for reinvestment
+      { from: 'step5-pay-mortgage', to: 'step6-heloc-nonreg', label: 'Creates HELOC credit' },
+      
+      // Direct growth connections
+      { from: 'step1-heloc-tfsa', to: 'result-tfsa', label: `${assumptions.annualReturn}% growth` },
+      { from: 'step2-heloc-rrsp', to: 'result-rrsp', label: `${assumptions.annualReturn}% growth` },
+      { from: 'step3-heloc-nonreg-initial', to: 'result-nonreg', label: 'Initial growth' },
+      { from: 'step6-heloc-nonreg', to: 'result-nonreg', label: 'Additional growth' }
     ];
 
-    return edgeConnections.map((connection, index) => ({
-      id: `edge-${connection.from}-${connection.to}`,
-      source: connection.from,
-      sourceHandle: connection.sourceHandle,
-      target: connection.to,
-      targetHandle: connection.targetHandle,
-      type: 'smoothstep',
-      animated: true,
-      style: {
-        stroke: '#10b981',
-        strokeWidth: 3,
-        strokeDasharray: '10,5',
-      },
-      markerEnd: {
-        type: 'arrowclosed',
-        width: 20,
-        height: 20,
-        color: '#10b981',
-      },
-      label: connection.label,
-      labelStyle: {
-        fill: '#065f46',
-        fontSize: 12,
-        fontWeight: 600,
-        textShadow: '0 2px 4px rgba(255,255,255,0.9)'
-      },
-      labelBgStyle: {
-        fill: '#ecfdf5',
-        stroke: '#10b981',
-        strokeWidth: 1.5,
-        rx: 6,
-        ry: 6,
-        padding: 4
-      },
-      pathOptions: connection.pathOptions
-    }));
+    return edgeConnections.map((connection, index) => {
+      // Define distinct colors and styles for each edge type (updated for new flow)
+      const edgeStyles = {
+        'step2-heloc-rrsp-step4-tax-refunds': {
+          color: '#3b82f6', // Blue for tax refund flow
+          sourceHandle: 'bottom',
+          targetHandle: 'top'
+        },
+        'step4-tax-refunds-step5-pay-mortgage': {
+          color: '#8b5cf6', // Purple for mortgage payment
+          sourceHandle: 'bottom',
+          targetHandle: 'top'
+        },
+        'step5-pay-mortgage-step6-heloc-nonreg': {
+          color: '#f59e0b', // Amber for reinvestment
+          sourceHandle: 'bottom',
+          targetHandle: 'top'
+        },
+        'step1-heloc-tfsa-result-tfsa': {
+          color: '#14b8a6', // Teal for TFSA growth
+          sourceHandle: 'bottom',
+          targetHandle: 'top'
+        },
+        'step2-heloc-rrsp-result-rrsp': {
+          color: '#6366f1', // Indigo for RRSP growth
+          sourceHandle: 'bottom',
+          targetHandle: 'top'
+        },
+        'step3-heloc-nonreg-initial-result-nonreg': {
+          color: '#059669', // Dark green for initial non-reg investment
+          sourceHandle: 'bottom',
+          targetHandle: 'left'
+        },
+        'step6-heloc-nonreg-result-nonreg': {
+          color: '#10b981', // Green for additional non-reg growth
+          sourceHandle: 'bottom',
+          targetHandle: 'top'
+        }
+      };
+
+      const edgeKey = `${connection.from}-${connection.to}`;
+      const style = edgeStyles[edgeKey] || { color: '#10b981', sourceHandle: 'right', targetHandle: 'left' };
+
+      return {
+        id: `edge-${connection.from}-${connection.to}`,
+        source: connection.from,
+        target: connection.to,
+        sourceHandle: style.sourceHandle,
+        targetHandle: style.targetHandle,
+        type: 'smoothstep',
+        animated: true,
+        style: {
+          stroke: style.color,
+          strokeWidth: 3,
+          strokeDasharray: '8,4',
+        },
+        markerEnd: {
+          type: 'arrowclosed',
+          width: 18,
+          height: 18,
+          color: style.color,
+        },
+        label: connection.label,
+        labelStyle: {
+          fill: style.color,
+          fontSize: 10,
+          fontWeight: 600,
+          textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+        },
+        labelBgStyle: {
+          fill: 'rgba(255,255,255,0.9)',
+          stroke: style.color,
+          strokeWidth: 1.5,
+          rx: 4,
+          ry: 4,
+          padding: 2
+        }
+      };
+    });
   }, [row]);
 
   // Update React Flow when data changes
@@ -418,28 +526,39 @@ function YearDetails({ year, onClose, tableData }) {
             </div>
           </div>
 
+
           {/* Main Flow Diagram */}
           <div className="bg-gray-50 p-3 sm:p-6">
-            <div className="h-[1200px] relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="h-[1600px] relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <ReactFlow
                 nodes={computedNodes}
                 edges={computedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                nodeTypes={{ 
-                  financial: (props) => <FinancialNode {...props} onShowDetails={handleShowDetails} />
-                }}
+                nodeTypes={nodeTypes}
                 onNodeClick={(event, node) => {
                   event.stopPropagation();
                   handleShowDetails(node.data);
                 }}
                 fitView
-                fitViewOptions={{ padding: 50 }}
-                minZoom={0.4}
-                maxZoom={1.2}
-                nodesDraggable={false}
-                nodesConnectable={false}
-                elementsSelectable={false}
+                fitViewOptions={{ 
+                  padding: 0.15,         // Increased padding for better edge visibility
+                  includeHiddenNodes: false,
+                  minZoom: 0.4,          // Reduced minimum zoom to see more content
+                  maxZoom: 1.2           // Adjusted maximum zoom for better user experience
+                }}
+                defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}  // Reduced default zoom to show more space
+                minZoom={0.3}
+                maxZoom={1.8}          // Allow more zoom for detailed viewing
+                nodesDraggable={true}        // Enable user dragging
+                nodesConnectable={false}     // Disable connecting new edges
+                elementsSelectable={true}    // Enable selection for better UX
+                nodeOrigin={[0.5, 0.5]}      // Center node origin for better dragging experience
+                selectNodesOnDrag={false}    // Improve drag performance
+                panOnDrag={false}            // Disable pan when dragging nodes for better UX
+                panOnScroll={true}           // Allow panning with scroll
+                zoomOnScroll={true}          // Allow zooming with scroll
+                zoomOnPinch={true}           // Allow pinch-to-zoom on mobile
                 proOptions={{ hideAttribution: true }}
               >
                 <Background variant="dots" gap={20} size={1} color="#e5e7eb" />
