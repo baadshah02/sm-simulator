@@ -146,15 +146,18 @@ function YearDetails({ year, onClose, tableData }) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Data processing
+  // Data processing - Find row first but don't return early
   const row = tableData.find(r => r.year === year);
-  if (!row) return null;
-
-  const { details } = row;
-  const { beginning, assumptions, calculations, end, percentChanges } = details;
-
+  
+  // All hooks must be called before any conditional returns
   // Create detailed step data for accurate Smith Manoeuvre visualization
-  const stepData = useMemo(() => [
+  const stepData = useMemo(() => {
+    if (!row) return [];
+    
+    const { details } = row;
+    const { beginning, assumptions, calculations, end, percentChanges } = details;
+    
+    return [
     {
       id: '1',
       title: 'Initial HELOC Borrowing',
@@ -235,7 +238,8 @@ function YearDetails({ year, onClose, tableData }) {
       tooltipContent: `Step 8: By year end, the combined effect of tax-advantaged investing, debt conversion, and monthly compounding results in ${percentChanges.portfolio}% portfolio growth worth $${Math.round(end.portfolio).toLocaleString()}.`,
       moneyFlow: `Total portfolio value: $${Math.round(end.portfolio).toLocaleString()} (+${percentChanges.portfolio}%)`
     }
-  ], [calculations, assumptions, percentChanges, end.portfolio]);
+  ];
+  }, [row]);
 
   // Create nodes with proper spacing to avoid overlap
   const computedNodes = useMemo(() => {
@@ -263,6 +267,11 @@ function YearDetails({ year, onClose, tableData }) {
 
   // Create flexible animated edges with better label positioning for 8 nodes
   const computedEdges = useMemo(() => {
+    if (!row) return [];
+    
+    const { details } = row;
+    const { assumptions, calculations, percentChanges } = details;
+    
     const edgeConnections = [
       { from: '1', to: '2', label: `$${Math.round((assumptions.rrspContrib + assumptions.tfsaContrib) / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
       { from: '2', to: '3', label: `$${Math.round(calculations.refund / 1000)}K`, sourceHandle: 'right', targetHandle: 'left' },
@@ -309,13 +318,21 @@ function YearDetails({ year, onClose, tableData }) {
       },
       pathOptions: connection.pathOptions
     }));
-  }, [assumptions.rrspContrib, assumptions.tfsaContrib, calculations.refund, calculations.standardPrincipal, percentChanges.portfolio]);
+  }, [row]);
 
   // Update React Flow when data changes
   useEffect(() => {
     setNodes(computedNodes);
     setEdges(computedEdges);
   }, [computedNodes, computedEdges, setNodes, setEdges]);
+
+  // Early return after all hooks are called
+  if (!row) {
+    return null;
+  }
+
+  const { details } = row;
+  const { beginning, assumptions, calculations, end, percentChanges } = details;
 
   return (
     <>
@@ -500,16 +517,114 @@ function YearDetails({ year, onClose, tableData }) {
                       <span className="font-medium">${calculations.averageDeductible.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between py-1">
-                      <span>Deductible HELOC Interest:</span>
-                      <span className="font-medium">${calculations.deductibleInterest.toLocaleString()}</span>
+                      <span>🟢 Tax-Deductible Interest:</span>
+                      <span className="font-medium text-green-700">${calculations.deductibleInterest.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between py-1">
+                      <span>🔴 Non-Tax-Deductible Interest:</span>
+                      <span className="font-medium text-red-600">${Math.round(calculations.helocInterest - calculations.deductibleInterest).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-t border-gray-200 pt-1">
                       <span>Total HELOC Interest Charged:</span>
-                      <span className="font-medium">${calculations.helocInterest.toLocaleString()}</span>
+                      <span className="font-bold">${calculations.helocInterest.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between py-1">
                       <span>Average Non-Reg Balance:</span>
                       <span className="font-medium">${calculations.averageNonReg.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            {/* Interest Compounding & Tax Strategy Analysis */}
+            <details className="group rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <summary className="flex justify-between items-center cursor-pointer px-5 py-4 bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 transition-all">
+                <span className="text-lg font-semibold text-gray-800">🔄 Interest-on-Interest Compounding & Tax Strategy</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform duration-300">▼</span>
+              </summary>
+              <div className="px-5 pb-5 pt-3 space-y-4 text-sm bg-white">
+                {/* Tax-Deductible Interest Flow */}
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h5 className="font-semibold text-green-800 mb-3 flex items-center">
+                    🟢 Tax-Deductible Interest Strategy
+                  </h5>
+                  <div className="space-y-2 text-green-700">
+                    <div className="flex justify-between border-b border-green-200 pb-1">
+                      <span>Investment-backed HELOC Interest:</span>
+                      <span className="font-medium">${calculations.deductibleInterest.toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm leading-relaxed">
+                      <strong>Compounding Effect:</strong> This ${calculations.deductibleInterest.toLocaleString()} interest gets <em>re-borrowed from HELOC</em> (added to investment debt) 
+                      and generates a tax refund of ${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} 
+                      ({assumptions.taxRate}% × ${calculations.deductibleInterest.toLocaleString()}). The government effectively pays {assumptions.taxRate}% of your investment interest!
+                    </div>
+                    <div className="bg-green-100 p-3 rounded border-l-4 border-green-500 text-green-800 text-xs">
+                      <strong>💡 Interest-on-Interest:</strong> As your non-registered investments grow, they generate more dividends, 
+                      which create more principal, which gets re-borrowed, creating more tax-deductible interest - this compounds annually!
+                    </div>
+                  </div>
+                </div>
+
+                {/* Non-Tax-Deductible Interest */}
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <h5 className="font-semibold text-red-800 mb-3 flex items-center">
+                    🔴 Non-Tax-Deductible Interest (Paid from Savings)
+                  </h5>
+                  <div className="space-y-2 text-red-700">
+                    <div className="flex justify-between border-b border-red-200 pb-1">
+                      <span>TFSA/RRSP Funding Interest:</span>
+                      <span className="font-medium">${Math.round(calculations.helocInterest - calculations.deductibleInterest).toLocaleString()}</span>
+                    </div>
+                    <div className="text-sm leading-relaxed">
+                      <strong>Payment Method:</strong> This interest is paid directly from your savings (not re-borrowed). 
+                      Since TFSA/RRSP investments don't generate taxable income, the CRA doesn't allow tax deductions on this interest.
+                    </div>
+                    <div className="bg-red-100 p-3 rounded border-l-4 border-red-500 text-red-800 text-xs">
+                      <strong>⚠️ Important:</strong> Only the ${calculations.deductibleInterest.toLocaleString()} investment-backed interest 
+                      contributes to your tax refund - not the ${Math.round(calculations.helocInterest - calculations.deductibleInterest).toLocaleString()} 
+                       TFSA/RRSP interest.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Tax Impact */}
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h5 className="font-semibold text-blue-800 mb-3">💰 Complete Tax Strategy Impact</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-blue-700">
+                    <div>
+                      <div className="text-xs text-blue-600 mb-2">Tax Refund Sources:</div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span>RRSP Contribution Tax Refund:</span>
+                          <span>${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Deductible Interest Tax Refund:</span>
+                          <span>${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-blue-300 pt-1 font-semibold">
+                          <span>Total Tax Refund:</span>
+                          <span>${calculations.refund.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-blue-600 mb-2">Net Cost Analysis:</div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span>Total HELOC Interest Charged:</span>
+                          <span>${calculations.helocInterest.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Government Tax Subsidy:</span>
+                          <span>-${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-blue-300 pt-1 font-semibold">
+                          <span>Net Interest Cost:</span>
+                          <span>${Math.round(calculations.helocInterest - (calculations.deductibleInterest * (assumptions.taxRate / 100))).toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

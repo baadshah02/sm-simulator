@@ -163,13 +163,25 @@ function App() {
       let P = (constant + rightAdd * nonDeductibleFromP) / left;
       P = Math.min(P, currentMortgage);
 
-      // Calculate values
+      // Calculate values with proper tax-deductible vs non-deductible interest split
       const additionalDeductible = P - nonDeductibleFromP;
       const averageDeductible = currentDeductible + additionalDeductible / 2;
+      
+      // HELOC Interest Breakdown:
+      // 1. Deductible portion: Interest on non-registered investments (gets re-borrowed + tax refund)
       const deductibleInterest = helocRate * averageDeductible;
+      
+      // 2. Non-deductible portion: Interest on TFSA/RRSP funding (paid from savings, no tax benefit)
+      const nonDeductibleBalance = currentHeloc - currentDeductible - additionalDeductible / 2;
+      const nonDeductibleInterest = Math.max(0, helocRate * nonDeductibleBalance);
+      
+      // Total HELOC interest charged
+      const helocInterest = deductibleInterest + nonDeductibleInterest;
+      
+      // Tax refund ONLY includes: RRSP contribution + deductible interest (NOT non-deductible interest)
       const refund = rrspContrib * taxRate + deductibleInterest * taxRate;
+      
       const averageNonReg = currentNonReg + additionalDeductible / 2;
-      const helocInterest = helocRate * (currentHeloc - P + P / 2); // average = beginning + P/2
       const tfsaValue = (currentTfsa + tfsaHeloc + tfsaSavings) * (1 + annualReturn);
       const rrspValue = (currentRrsp + rrspContrib) * (1 + annualReturn);
       const nonRegValue = currentNonReg * (1 + growthRate) + additionalDeductible * (1 + growthRate / 2);
