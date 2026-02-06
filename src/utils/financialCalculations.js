@@ -97,6 +97,74 @@ export const generateFinancialData = (formData) => {
   let currentDeductible = 0;
   const data = [];
 
+  // Add Year 0 - Current/Initial State (before Smith Manoeuvre begins)
+  data.push({
+    year: 0,
+    mortgageBalance: Math.round(initialMortgage),
+    helocBalance: 0,
+    helocInterest: 0,
+    portfolioValue: Math.round(initialTfsa),
+    tfsaValue: Math.round(initialTfsa),
+    rrspValue: 0,
+    nonRegValue: 0,
+    taxRefund: 0,
+    principalBuilt: 0,
+    details: {
+      beginning: {
+        mortgage: initialMortgage,
+        heloc: 0,
+        tfsa: initialTfsa,
+        rrsp: 0,
+        nonReg: 0,
+        deductible: 0,
+        portfolio: initialTfsa,
+      },
+      assumptions: {
+        mortgageRate: mortgageRatePct,
+        helocRate: helocRatePct,
+        taxRate: taxRatePct,
+        annualReturn: annualReturnPct,
+        growthRate: growthRatePct,
+        dividendYield: dividendYieldPct,
+        rrspContrib: 0,
+        tfsaContrib: 0,
+        initialNonReg: 0,
+      },
+      calculations: {
+        standardPrincipal: 0,
+        a: 0,
+        b: 0,
+        left: 1,
+        rightAdd: 0,
+        constant: 0,
+        P: 0,
+        additionalDeductible: 0,
+        averageDeductible: 0,
+        deductibleInterest: 0,
+        refund: 0,
+        averageNonReg: 0,
+        helocInterest: 0,
+        dividendsThisYear: 0,
+      },
+      end: {
+        mortgage: initialMortgage,
+        heloc: 0,
+        tfsa: initialTfsa,
+        rrsp: 0,
+        nonReg: 0,
+        portfolio: initialTfsa,
+      },
+      percentChanges: {
+        tfsa: '0.00',
+        rrsp: '0.00',
+        nonReg: '0.00',
+        portfolio: '0.00',
+        mortgageDecrease: '0.00',
+        helocIncrease: '0.00',
+      }
+    }
+  });
+
   for (let year = 1; year <= 30; year++) {
     const beginning = {
       mortgage: currentMortgage,

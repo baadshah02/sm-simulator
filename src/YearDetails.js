@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ReactFlow, Background, Controls, useNodesState, useEdgesState, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 // Enhanced Custom Node Component with integrated info display
 const FinancialNode = ({ data, selected, onShowDetails }) => {
+  // Get hover state from data
+  const isHovered = data.isHovered || false;
 
   const getNodeStyle = (type) => {
     const styles = {
@@ -107,9 +109,12 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
         className={`
           relative p-3 sm:p-4 rounded-2xl border-2 shadow-lg cursor-pointer
           bg-gradient-to-br ${style.gradient} ${style.border}
-          hover:shadow-xl transform transition-all duration-300 hover:scale-105
+          hover:shadow-xl transform transition-transform duration-200
           w-full max-w-[180px] sm:max-w-[200px] md:max-w-[220px]
+          ${isHovered ? 'scale-105' : 'scale-100'}
         `}
+        style={{ opacity: data.nodeOpacity || 1 }}
+
         onClick={(e) => {
           e.stopPropagation();
           onShowDetails(data);
@@ -174,18 +179,18 @@ const FinancialNode = ({ data, selected, onShowDetails }) => {
 };
 
 function YearDetails({ year, onClose, tableData }) {
-  const [, setNodes, onNodesChange] = useNodesState([]);
-  const [, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeInfoPanel, setActiveInfoPanel] = useState(null);
   
   const handleShowDetails = (nodeData) => {
     setActiveInfoPanel(activeInfoPanel?.id === nodeData.id ? null : nodeData);
   };
 
-  // Memoize nodeTypes to prevent React Flow warnings
+  // Memoize nodeTypes
   const nodeTypes = useMemo(() => ({
     financial: (props) => <FinancialNode {...props} onShowDetails={handleShowDetails} />
-  }), [handleShowDetails]);
+  }), []);
 
   // Close on Escape key
   useEffect(() => {
@@ -207,7 +212,7 @@ function YearDetails({ year, onClose, tableData }) {
     const { details } = row;
     const { beginning, assumptions, calculations, end, percentChanges } = details;
     
-    // Detailed step-by-step flow cards
+    // Detailed step-by-step flow cards - Enhanced Smith Manoeuvre Breakdown
     return [
       // Step 1: Initial HELOC borrows for TFSA
       {
@@ -245,39 +250,75 @@ function YearDetails({ year, onClose, tableData }) {
         moneyFlow: `HELOC Credit: $${Math.round(assumptions.initialNonReg).toLocaleString()} → Non-Registered Account`
       },
       
-      // Step 4: Government provides tax refunds
+      // Step 4A: Standard Mortgage Principal Payment
       {
-        id: 'step4-tax-refunds',
-        title: 'Step 4: Tax Refunds',
-        type: 'tax',
-        amount: `$${calculations.refund.toLocaleString()}`,
-        description: 'CRA → Your Bank Account',
-        tooltipTitle: 'Step 4: Government Tax Refunds',
-        tooltipContent: `Tax time: Government provides $${calculations.refund.toLocaleString()} in tax refunds from RRSP contributions and investment interest deductions. This is free money from the government!`,
-        moneyFlow: `CRA Tax Refund: $${calculations.refund.toLocaleString()} → Bank Account`
-      },
-      
-      // Step 5: Use tax refunds for mortgage principal
-      {
-        id: 'step5-pay-mortgage',
-        title: 'Step 5: Pay Mortgage',
+        id: 'step4a-standard-principal',
+        title: 'Step 4A: Standard Principal',
         type: 'mortgage',
-        amount: `$${calculations.refund.toLocaleString()}`,
-        description: 'Bank → Mortgage Principal',
-        tooltipTitle: 'Step 5: Mortgage Principal Payment',
-        tooltipContent: `Use tax refunds to pay down $${calculations.refund.toLocaleString()} of mortgage principal. This converts non-deductible debt to available HELOC credit for tax-deductible investments.`,
-        moneyFlow: `Bank Account: $${calculations.refund.toLocaleString()} → Mortgage Principal Payment`
+        amount: `$${calculations.standardPrincipal.toLocaleString()}`,
+        description: 'Regular Mortgage Payment',
+        tooltipTitle: 'Step 4A: Standard Mortgage Principal Payment',
+        tooltipContent: `Throughout year: Your regular mortgage payments include $${calculations.standardPrincipal.toLocaleString()} in principal reduction, creating available HELOC credit for reinvestment.`,
+        moneyFlow: `Monthly Payments: $${calculations.standardPrincipal.toLocaleString()} → Mortgage Principal Reduction`
       },
       
-      // Step 6: Re-borrow for non-registered investments
+      // Step 4B: Tax Refunds from RRSP
       {
-        id: 'step6-heloc-nonreg',
-        title: 'Step 6: Reinvest Credits',
+        id: 'step4b-rrsp-refund',
+        title: 'Step 4B: RRSP Tax Refund',
+        type: 'tax',
+        amount: `$${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()}`,
+        description: 'CRA → Bank Account',
+        tooltipTitle: 'Step 4B: RRSP Contribution Tax Refund',
+        tooltipContent: `Tax time: Government provides $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} tax refund from your $${assumptions.rrspContrib.toLocaleString()} RRSP contribution (${assumptions.taxRate}% tax rate).`,
+        moneyFlow: `CRA RRSP Refund: $${Math.round(assumptions.rrspContrib * (assumptions.taxRate / 100)).toLocaleString()} → Bank Account`
+      },
+      
+      // Step 4C: Tax Refunds from Deductible Interest
+      {
+        id: 'step4c-interest-refund',
+        title: 'Step 4C: Interest Tax Refund',
+        type: 'tax',
+        amount: `$${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()}`,
+        description: 'CRA → Bank Account',
+        tooltipTitle: 'Step 4C: Deductible Interest Tax Refund',
+        tooltipContent: `Tax time: Government provides $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} tax refund from $${calculations.deductibleInterest.toLocaleString()} in tax-deductible investment interest (${assumptions.taxRate}% tax rate).`,
+        moneyFlow: `CRA Interest Refund: $${Math.round(calculations.deductibleInterest * (assumptions.taxRate / 100)).toLocaleString()} → Bank Account`
+      },
+      
+      // Step 4D: Dividend Income  
+      {
+        id: 'step4d-dividend-income',
+        title: 'Step 4D: Dividend Income',
+        type: 'invest',
+        amount: `$${calculations.dividendsThisYear.toLocaleString()}`,
+        description: 'Portfolio → Bank Account',
+        tooltipTitle: 'Step 4D: Dividend Income from Investments',
+        tooltipContent: `Throughout year: Your non-registered investments generate $${calculations.dividendsThisYear.toLocaleString()} in dividend income (${assumptions.dividendYield}% yield), providing additional capital for reinvestment.`,
+        moneyFlow: `Investment Dividends: $${calculations.dividendsThisYear.toLocaleString()} → Bank Account`
+      },
+      
+      // Step 5: All Components Combine into Total Principal (P)
+      {
+        id: 'step5-combine-p',
+        title: 'Step 5: Total Principal (P)',
+        type: 'cycle',
+        amount: `$${Math.round(calculations.P).toLocaleString()}`,
+        description: 'All Components Combined',
+        tooltipTitle: 'Step 5: Smith Manoeuvre Formula Creates Total Principal (P)',
+        tooltipContent: `Smith Manoeuvre Magic: All components (standard principal $${calculations.standardPrincipal.toLocaleString()} + tax refunds $${calculations.refund.toLocaleString()} + dividends $${calculations.dividendsThisYear.toLocaleString()} + compounding effects) combine using the Smith Manoeuvre formula to create total accelerated principal payment of $${Math.round(calculations.P).toLocaleString()}.`,
+        moneyFlow: `Smith Manoeuvre Formula: Multiple Income Sources → Total Principal $${Math.round(calculations.P).toLocaleString()}`
+      },
+      
+      // Step 6: Reinvest Total P Amount
+      {
+        id: 'step6-reinvest-p',
+        title: 'Step 6: Reinvest Total P',
         type: 'invest',
         amount: `$${Math.round(calculations.P).toLocaleString()}`,
         description: 'HELOC → Non-Registered',
-        tooltipTitle: 'Step 6: Additional Non-Registered Investment',
-        tooltipContent: `Throughout year: You borrow an additional $${Math.round(calculations.P).toLocaleString()} from the HELOC to purchase more non-registered investments. Interest on this investment debt is tax-deductible, creating ongoing tax benefits.`,
+        tooltipTitle: 'Step 6: Reinvest Complete Principal Amount',
+        tooltipContent: `Year-end: The complete $${Math.round(calculations.P).toLocaleString()} principal amount gets re-borrowed from HELOC and invested in non-registered investments, creating more tax-deductible debt and continuing the wealth-building cycle.`,
         moneyFlow: `HELOC Credit: $${Math.round(calculations.P).toLocaleString()} → Non-Registered Investments`
       },
       
@@ -317,33 +358,26 @@ function YearDetails({ year, onClose, tableData }) {
     ];
   }, [row]);
 
-  // Create step-by-step positioning for 9 detailed cards with increased spacing for better edge visibility
+  // Create responsive layout
   const computedNodes = useMemo(() => {
-    const spacingX = 420;  // Increased from 350 to 420 for much better horizontal spacing and edge visibility
-    const spacingY = 280;  // Increased from 220 to 280 for much better vertical spacing and edge visibility  
-    const startX = 100;    // Increased from 80 to 100 for better margins
-    const startY = 100;    // Increased from 80 to 100 for better margins
+    const spacingX = 500;
+    const spacingY = 450;
+    const startX = 150;
+    const startY = 150;
 
-    // Step-by-step flow positioning for 9 cards (6 steps + 3 results) with adjusted right positioning
     const positionById = {
-      // Row 1: Initial Funding Steps (3 cards)
-      'step1-heloc-tfsa': { x: startX, y: startY },                           // Step 1: Fund TFSA
-      'step2-heloc-rrsp': { x: startX + spacingX, y: startY },                // Step 2: Fund RRSP 
-      'step3-heloc-nonreg-initial': { x: startX + spacingX * 3, y: startY },  // Step 3: Fund Non-Reg (moved further right)
-      
-      // Row 2: Tax Refunds (moved further right)
-      'step4-tax-refunds': { x: startX + spacingX * 2, y: startY + spacingY },    // Step 4: Tax Refunds 
-      
-      // Row 3: Mortgage Payment (moved further right)
-      'step5-pay-mortgage': { x: startX + spacingX * 2, y: startY + spacingY * 2 }, // Step 5: Pay Mortgage
-      
-      // Row 4: Reinvest Credits (moved further right)
-      'step6-heloc-nonreg': { x: startX + spacingX * 2, y: startY + spacingY * 3 }, // Step 6: Reinvest Credits
-      
-      // Row 5: Final Results (non-reg moved further right to align)
-      'result-tfsa': { x: startX, y: startY + spacingY * 4 },                 // TFSA Final Value
-      'result-rrsp': { x: startX + spacingX, y: startY + spacingY * 4 },      // RRSP Final Value  
-      'result-nonreg': { x: startX + spacingX * 3, y: startY + spacingY * 4 } // Non-Reg Final Value (moved further right)
+      'step1-heloc-tfsa': { x: startX, y: startY },
+      'step2-heloc-rrsp': { x: startX + spacingX, y: startY },
+      'step3-heloc-nonreg-initial': { x: startX + spacingX * 2, y: startY },
+      'step5-combine-p': { x: startX + spacingX * 4, y: startY + spacingY * 2 },
+      'step6-reinvest-p': { x: startX + spacingX * 4, y: startY + spacingY * 3 },
+      'step4a-standard-principal': { x: startX + spacingX * 3, y: startY },
+      'step4b-rrsp-refund': { x: startX + spacingX * 1.5, y: startY + 380 },
+      'step4c-interest-refund': { x: startX + spacingX * 2.5, y: startY + 380 },
+      'step4d-dividend-income': { x: startX + spacingX * 3.5, y: startY + 380 },
+      'result-tfsa': { x: startX, y: startY + spacingY * 3.5 },
+      'result-rrsp': { x: startX + spacingX, y: startY + spacingY * 3.5 },
+      'result-nonreg': { x: startX + spacingX * 2.5, y: startY + spacingY * 3.5 }
     };
 
     return stepData.map((step) => ({
@@ -351,124 +385,100 @@ function YearDetails({ year, onClose, tableData }) {
       position: positionById[step.id] || { x: startX, y: startY },
       data: step,
       type: 'financial',
-      draggable: true,      // Enable user dragging
-      selectable: true,     // Enable selection
-      deletable: false,     // Prevent accidental deletion
-      connectable: false,   // Prevent connecting new edges accidentally
+      draggable: true,
+      selectable: true,
+      deletable: false,
+      connectable: false,
     }));
   }, [stepData]);
 
-  // Create step-by-step edge connections for the 8-card flow
+  // Create edge connections
   const computedEdges = useMemo(() => {
     if (!row) return [];
     
     const { details } = row;
     const { assumptions, calculations } = details;
-    
-    // Step-by-step connections showing money flow chronologically (updated for 6-step flow)
+
     const edgeConnections = [
-      // Step 2 to 4: RRSP generates tax refunds
-      { from: 'step2-heloc-rrsp', to: 'step4-tax-refunds', label: 'Tax refund' },
-      
-      // Step 4 to 5: Tax refunds pay mortgage
-      { from: 'step4-tax-refunds', to: 'step5-pay-mortgage', label: `$${Math.round(calculations.refund / 1000)}K refund` },
-      
-      // Step 5 to 6: Mortgage payment creates HELOC credit for reinvestment
-      { from: 'step5-pay-mortgage', to: 'step6-heloc-nonreg', label: 'Creates HELOC credit' },
-      
-      // Direct growth connections
+      { from: 'step2-heloc-rrsp', to: 'step4b-rrsp-refund', label: 'Generates refund' },
+      { from: 'step3-heloc-nonreg-initial', to: 'step4c-interest-refund', label: 'Interest deduction' },
+      { from: 'step3-heloc-nonreg-initial', to: 'step4d-dividend-income', label: 'Dividends' },
+      { from: 'step4a-standard-principal', to: 'step5-combine-p', label: 'Principal component' },
+      { from: 'step4b-rrsp-refund', to: 'step5-combine-p', label: 'Refund component' },
+      { from: 'step4c-interest-refund', to: 'step5-combine-p', label: 'Tax savings' },
+      { from: 'step4d-dividend-income', to: 'step5-combine-p', label: 'Income component' },
+      { from: 'step5-combine-p', to: 'step6-reinvest-p', label: `$${Math.round(calculations.P / 1000)}K reinvested` },
       { from: 'step1-heloc-tfsa', to: 'result-tfsa', label: `${assumptions.annualReturn}% growth` },
       { from: 'step2-heloc-rrsp', to: 'result-rrsp', label: `${assumptions.annualReturn}% growth` },
       { from: 'step3-heloc-nonreg-initial', to: 'result-nonreg', label: 'Initial growth' },
-      { from: 'step6-heloc-nonreg', to: 'result-nonreg', label: 'Additional growth' }
+      { from: 'step6-reinvest-p', to: 'result-nonreg', label: 'Additional growth' }
     ];
 
     return edgeConnections.map((connection, index) => {
-      // Define distinct colors and styles for each edge type (updated for new flow)
-      const edgeStyles = {
-        'step2-heloc-rrsp-step4-tax-refunds': {
-          color: '#3b82f6', // Blue for tax refund flow
-          sourceHandle: 'bottom',
-          targetHandle: 'top'
-        },
-        'step4-tax-refunds-step5-pay-mortgage': {
-          color: '#8b5cf6', // Purple for mortgage payment
-          sourceHandle: 'bottom',
-          targetHandle: 'top'
-        },
-        'step5-pay-mortgage-step6-heloc-nonreg': {
-          color: '#f59e0b', // Amber for reinvestment
-          sourceHandle: 'bottom',
-          targetHandle: 'top'
-        },
-        'step1-heloc-tfsa-result-tfsa': {
-          color: '#14b8a6', // Teal for TFSA growth
-          sourceHandle: 'bottom',
-          targetHandle: 'top'
-        },
-        'step2-heloc-rrsp-result-rrsp': {
-          color: '#6366f1', // Indigo for RRSP growth
-          sourceHandle: 'bottom',
-          targetHandle: 'top'
-        },
-        'step3-heloc-nonreg-initial-result-nonreg': {
-          color: '#059669', // Dark green for initial non-reg investment
-          sourceHandle: 'bottom',
-          targetHandle: 'left'
-        },
-        'step6-heloc-nonreg-result-nonreg': {
-          color: '#10b981', // Green for additional non-reg growth
-          sourceHandle: 'bottom',
-          targetHandle: 'top'
-        }
+      const routingMap = {
+        'step2-heloc-rrsp-step4b-rrsp-refund': { color: '#3b82f6', sourceHandle: 'bottom', targetHandle: 'top', strokeWidth: 3 },
+        'step3-heloc-nonreg-initial-step4c-interest-refund': { color: '#10b981', sourceHandle: 'right', targetHandle: 'left', strokeWidth: 3 },
+        'step3-heloc-nonreg-initial-step4d-dividend-income': { color: '#f59e0b', sourceHandle: 'bottom', targetHandle: 'left', strokeWidth: 3 },
+        'step4a-standard-principal-step5-combine-p': { color: '#8b5cf6', sourceHandle: 'right', targetHandle: 'top', strokeWidth: 4 },
+        'step4b-rrsp-refund-step5-combine-p': { color: '#3b82f6', sourceHandle: 'right', targetHandle: 'left', strokeWidth: 4 },
+        'step4c-interest-refund-step5-combine-p': { color: '#10b981', sourceHandle: 'right', targetHandle: 'left', strokeWidth: 4 },
+        'step4d-dividend-income-step5-combine-p': { color: '#f59e0b', sourceHandle: 'right', targetHandle: 'left', strokeWidth: 4 },
+        'step5-combine-p-step6-reinvest-p': { color: '#dc2626', sourceHandle: 'bottom', targetHandle: 'top', strokeWidth: 5 },
+        'step1-heloc-tfsa-result-tfsa': { color: '#14b8a6', sourceHandle: 'bottom', targetHandle: 'top', strokeWidth: 3 },
+        'step2-heloc-rrsp-result-rrsp': { color: '#6366f1', sourceHandle: 'bottom', targetHandle: 'top', strokeWidth: 3 },
+        'step3-heloc-nonreg-initial-result-nonreg': { color: '#059669', sourceHandle: 'bottom', targetHandle: 'top', strokeWidth: 3 },
+        'step6-reinvest-p-result-nonreg': { color: '#dc2626', sourceHandle: 'bottom', targetHandle: 'top', strokeWidth: 4 }
       };
-
-      const edgeKey = `${connection.from}-${connection.to}`;
-      const style = edgeStyles[edgeKey] || { color: '#10b981', sourceHandle: 'right', targetHandle: 'left' };
-
+      
+      const key = `${connection.from}-${connection.to}`;
+      const routing = routingMap[key] || { color: '#6b7280', sourceHandle: 'right', targetHandle: 'left', strokeWidth: 2 };
+      
       return {
         id: `edge-${connection.from}-${connection.to}`,
         source: connection.from,
         target: connection.to,
-        sourceHandle: style.sourceHandle,
-        targetHandle: style.targetHandle,
+        sourceHandle: routing.sourceHandle,
+        targetHandle: routing.targetHandle,
         type: 'smoothstep',
-        animated: true,
         style: {
-          stroke: style.color,
-          strokeWidth: 3,
-          strokeDasharray: '8,4',
+          stroke: routing.color,
+          strokeWidth: routing.strokeWidth,
         },
         markerEnd: {
           type: 'arrowclosed',
-          width: 18,
-          height: 18,
-          color: style.color,
+          width: 12,
+          height: 12,
+          color: routing.color,
         },
         label: connection.label,
         labelStyle: {
-          fill: style.color,
-          fontSize: 10,
+          fill: '#ffffff',
+          fontSize: 11,
           fontWeight: 600,
-          textShadow: '0 1px 2px rgba(255,255,255,0.8)'
         },
         labelBgStyle: {
-          fill: 'rgba(255,255,255,0.9)',
-          stroke: style.color,
-          strokeWidth: 1.5,
-          rx: 4,
-          ry: 4,
-          padding: 2
-        }
+          fill: routing.color,
+          stroke: routing.color,
+          strokeWidth: 2,
+          rx: 8,
+          ry: 8,
+        },
+        labelShowBg: true,
+        labelBgPadding: [10, 16]
       };
     });
   }, [row]);
-
-  // Update React Flow when data changes
   useEffect(() => {
-    setNodes(computedNodes);
-    setEdges(computedEdges);
-  }, [computedNodes, computedEdges, setNodes, setEdges]);
+    if (computedNodes.length > 0 && nodes.length === 0) {
+      setNodes(computedNodes);
+    }
+  }, [computedNodes, nodes.length, setNodes]);
+
+  useEffect(() => {
+    if (computedEdges.length > 0) {
+      setEdges(computedEdges);
+    }
+  }, [computedEdges, setEdges]);
 
   // Early return after all hooks are called
   if (!row) {
@@ -554,8 +564,8 @@ function YearDetails({ year, onClose, tableData }) {
                 nodesConnectable={false}     // Disable connecting new edges
                 elementsSelectable={true}    // Enable selection for better UX
                 nodeOrigin={[0.5, 0.5]}      // Center node origin for better dragging experience
-                selectNodesOnDrag={true}     // Allow selection when dragging for better user experience
-                panOnDrag={[1, 2]}           // Only allow panning with middle mouse button and right click, preserve left click for dragging
+                selectNodesOnDrag={false}    // Disable selection on drag to improve drag performance
+                panOnDrag={true}             // Allow normal panning behavior
                 panOnScroll={true}           // Allow panning with scroll
                 zoomOnScroll={true}          // Allow zooming with scroll
                 zoomOnPinch={true}           // Allow pinch-to-zoom on mobile
