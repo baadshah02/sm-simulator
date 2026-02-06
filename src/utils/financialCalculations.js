@@ -97,7 +97,7 @@ export const generateFinancialData = (formData) => {
   let currentDeductible = 0;
   const data = [];
 
-  for (let year = 1; year <= 20; year++) {
+  for (let year = 1; year <= 30; year++) {
     const beginning = {
       mortgage: currentMortgage,
       heloc: currentHeloc,
@@ -113,7 +113,7 @@ export const generateFinancialData = (formData) => {
     const tfsaHeloc = isYear1 ? tfsaRoomYear1 : 0;
     const tfsaSavings = isYear1 ? 0 : annualTfsaIncrease;
     const tfsaContrib = tfsaHeloc + tfsaSavings;
-    const nonDeductibleFromP = isYear1 ? 0 : rrspContrib;
+    const nonDeductibleFromP = rrspContrib + tfsaSavings; // RRSP + TFSA from savings are both non-deductible
     const initialKick = isYear1 ? initialHelocAvailable : 0;
     const initialNonReg = isYear1 ? Math.max(0, initialKick - tfsaHeloc - rrspContrib) : 0;
 
@@ -161,14 +161,25 @@ export const generateFinancialData = (formData) => {
       // 1. Deductible portion: Interest on non-registered investments (gets re-borrowed + tax refund)
       deductibleInterest = helocRate * averageDeductible;
       
-      // 2. Non-deductible portion: ONLY Interest on TFSA/RRSP funding (paid from savings, no tax benefit)
-      // Calculate what portion of HELOC was used for non-deductible purposes (TFSA/RRSP)
+      // 2. Non-deductible portion: Interest on TFSA/RRSP funding (paid from savings, no tax benefit)
+      // Calculate what portion of HELOC was used for non-deductible purposes throughout all years
       const tfsaHelocUsed = hasInitialActivity ? tfsaHeloc : 0;
       const rrspHelocUsed = hasInitialActivity ? Math.min(rrspContrib, Math.max(0, initialKick - tfsaHeloc)) : 0;
-      const totalNonDeductibleUsed = tfsaHelocUsed + rrspHelocUsed;
       
-      // Non-deductible interest is ONLY on TFSA/RRSP portions, NOT on mortgage principal reinvestment
-      nonDeductibleInterest = Math.max(0, helocRate * totalNonDeductibleUsed);
+      // Track cumulative non-deductible HELOC usage (TFSA/RRSP funded by HELOC over time)
+      // This should include ongoing TFSA/RRSP contributions that come from redirected principal payments
+      let cumulativeNonDeductibleHeloc = tfsaHelocUsed + rrspHelocUsed;
+      
+      // Add any ongoing TFSA/RRSP funding that reduces deductible investments
+      // This represents the portion of P that went to non-deductible purposes instead of investments
+      if (!isYear1) {
+        // In subsequent years, TFSA savings and ongoing RRSP reduce what could be deductible
+        const nonDeductiblePortionOfP = Math.min(P, nonDeductibleFromP);
+        cumulativeNonDeductibleHeloc += nonDeductiblePortionOfP * (year - 1); // Approximate cumulative effect
+      }
+      
+      // Non-deductible interest is charged on the cumulative non-deductible HELOC balance
+      nonDeductibleInterest = Math.max(0, helocRate * Math.min(cumulativeNonDeductibleHeloc, currentHeloc + initialKick));
       
       // Total HELOC interest charged
       helocInterest = deductibleInterest + nonDeductibleInterest;

@@ -317,12 +317,12 @@ function YearDetails({ year, onClose, tableData }) {
     ];
   }, [row]);
 
-  // Create step-by-step positioning for 8 detailed cards with increased spacing
+  // Create step-by-step positioning for 9 detailed cards with increased spacing for better edge visibility
   const computedNodes = useMemo(() => {
-    const spacingX = 350;  // Increased from 280 to 350 for better horizontal spacing
-    const spacingY = 220;  // Increased from 180 to 220 for better vertical spacing
-    const startX = 80;     // Increased from 50 to 80 for better margins
-    const startY = 80;     // Increased from 50 to 80 for better margins
+    const spacingX = 420;  // Increased from 350 to 420 for much better horizontal spacing and edge visibility
+    const spacingY = 280;  // Increased from 220 to 280 for much better vertical spacing and edge visibility  
+    const startX = 100;    // Increased from 80 to 100 for better margins
+    const startY = 100;    // Increased from 80 to 100 for better margins
 
     // Step-by-step flow positioning for 9 cards (6 steps + 3 results) with adjusted right positioning
     const positionById = {
@@ -529,7 +529,7 @@ function YearDetails({ year, onClose, tableData }) {
 
           {/* Main Flow Diagram */}
           <div className="bg-gray-50 p-3 sm:p-6">
-            <div className="h-[1600px] relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="h-[80vh] relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <ReactFlow
                 nodes={computedNodes}
                 edges={computedEdges}
@@ -542,20 +542,20 @@ function YearDetails({ year, onClose, tableData }) {
                 }}
                 fitView
                 fitViewOptions={{ 
-                  padding: 0.15,         // Increased padding for better edge visibility
+                  padding: 0.1,          // Reduced padding to fit more content
                   includeHiddenNodes: false,
-                  minZoom: 0.4,          // Reduced minimum zoom to see more content
-                  maxZoom: 1.2           // Adjusted maximum zoom for better user experience
+                  minZoom: 0.2,          // Allow more zoom out to see everything
+                  maxZoom: 1.5           // Adjusted maximum zoom
                 }}
-                defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}  // Reduced default zoom to show more space
-                minZoom={0.3}
-                maxZoom={1.8}          // Allow more zoom for detailed viewing
+                defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}  // Lower default zoom to fit all content
+                minZoom={0.2}
+                maxZoom={2.0}          // Allow more zoom for detailed viewing
                 nodesDraggable={true}        // Enable user dragging
                 nodesConnectable={false}     // Disable connecting new edges
                 elementsSelectable={true}    // Enable selection for better UX
                 nodeOrigin={[0.5, 0.5]}      // Center node origin for better dragging experience
-                selectNodesOnDrag={false}    // Improve drag performance
-                panOnDrag={false}            // Disable pan when dragging nodes for better UX
+                selectNodesOnDrag={true}     // Allow selection when dragging for better user experience
+                panOnDrag={[1, 2]}           // Only allow panning with middle mouse button and right click, preserve left click for dragging
                 panOnScroll={true}           // Allow panning with scroll
                 zoomOnScroll={true}          // Allow zooming with scroll
                 zoomOnPinch={true}           // Allow pinch-to-zoom on mobile

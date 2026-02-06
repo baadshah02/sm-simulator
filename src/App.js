@@ -6,6 +6,7 @@ import YearDetails from './YearDetails';
 import FinancialForm from './components/form/FinancialForm';
 import ComparisonSummary from './components/summary/ComparisonSummary';
 import DataTable from './components/table/DataTable';
+import TestRunner from './components/testing/TestRunner';
 
 // Hooks
 import { useFormData } from './hooks/useFormData';
@@ -26,6 +27,7 @@ const App = () => {
   const [selectedYear, setSelectedYear] = useState(null);
   const [comparisonData, setComparisonData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showTests, setShowTests] = useState(false);
 
   const handleGenerateTable = async () => {
     try {
@@ -102,7 +104,20 @@ const App = () => {
         </button>
 
         {/* Comparison Summary */}
-        <ComparisonSummary comparisonData={comparisonData} />
+        <ComparisonSummary comparisonData={comparisonData} smithData={tableData} />
+
+        {/* Toggle Test Runner */}
+        <div className="mb-8 text-center">
+          <button
+            onClick={() => setShowTests(!showTests)}
+            className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            {showTests ? 'Hide' : 'Show'} Calculation Validation Tests
+          </button>
+        </div>
+
+        {/* Test Runner (conditionally displayed) */}
+        {showTests && <TestRunner />}
 
         {/* Data Table */}
         <DataTable 
