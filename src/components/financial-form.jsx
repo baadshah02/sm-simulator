@@ -1,0 +1,135 @@
+"use client"
+
+import { FORM_FIELDS } from "@/lib/formFields"
+import { PROVINCES } from "@/lib/provinceData"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Info } from "lucide-react"
+
+const SECTION_ICONS = {
+    'Mortgage Settings': '🏠',
+    'HELOC & Tax Settings': '🏦',
+    'Investment Returns': '📈',
+    'TFSA Settings': '💎',
+    'RRSP Settings': '🛡️',
+}
+
+const provinceOptions = PROVINCES.map(p => ({ value: p.value, label: p.label }))
+
+function FieldTooltip({ content }) {
+    if (!content) return null
+    return (
+        <TooltipProvider delayDuration={200}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 ml-1.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                    <p>{content}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    )
+}
+
+function FormField({ field, value, onValueChange, onInputChange }) {
+    const id = `field-${field.name}`
+
+    if (field.type === 'select') {
+        const options = field.options === 'provinces' ? provinceOptions : field.options
+        return (
+            <div className="space-y-2">
+                <Label htmlFor={id} className="flex items-center text-sm">
+                    {field.label}
+                    <FieldTooltip content={field.tooltipContent} />
+                </Label>
+                <Select value={value?.toString()} onValueChange={(val) => onValueChange(field.name, val)}>
+                    <SelectTrigger id={id}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {options?.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={id} className="flex items-center text-sm">
+                {field.label}
+                <FieldTooltip content={field.tooltipContent} />
+            </Label>
+            <Input
+                id={id}
+                type={field.type || "number"}
+                step={field.step}
+                name={field.name}
+                value={value}
+                onChange={onInputChange}
+            />
+        </div>
+    )
+}
+
+export default function FinancialForm({ formData, onValueChange, onInputChange, onLoadPreset, presets }) {
+    return (
+        <div className="space-y-3">
+            {/* Preset Buttons */}
+            {presets && presets.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    <span className="text-xs font-medium text-muted-foreground self-center mr-1">Presets:</span>
+                    {presets.map(preset => (
+                        <button
+                            key={preset.id}
+                            onClick={() => onLoadPreset(preset.formData)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium hover:bg-muted transition-colors"
+                            title={preset.description}
+                        >
+                            <span>{preset.icon}</span>
+                            {preset.name}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Form Accordion */}
+            <Accordion type="multiple" defaultValue={['Mortgage Settings', 'HELOC & Tax Settings']} className="space-y-3">
+                {FORM_FIELDS.map((section) => (
+                    <AccordionItem key={section.section} value={section.section} className="border rounded-lg px-1">
+                        <Card className="border-0 shadow-none">
+                            <AccordionTrigger className="px-5 py-3 hover:no-underline">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <span>{SECTION_ICONS[section.section] || '⚙️'}</span>
+                                    {section.section}
+                                </CardTitle>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <CardContent className="pt-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {section.fields.map((field) => (
+                                            <FormField
+                                                key={field.name}
+                                                field={field}
+                                                value={formData[field.name]}
+                                                onValueChange={onValueChange}
+                                                onInputChange={onInputChange}
+                                            />
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </AccordionContent>
+                        </Card>
+                    </AccordionItem>
+                ))}
+            </Accordion>
+        </div>
+    )
+}

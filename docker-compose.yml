@@ -1,38 +1,12 @@
-version: '3.8'
-
 services:
-  smith-manoeuvre-app:
+  sm-simulator:
     build: .
     container_name: smith-manoeuvre-simulator
     restart: unless-stopped
     ports:
-      - "3001:80"  # Maps container port 80 to host port 3001
-    networks:
-      - webproxy
-    labels:
-      # For Traefik reverse proxy (if using Traefik)
-      - "traefik.enable=true"
-      - "traefik.http.routers.smith-manoeuvre.rule=Host(`finance.yourdomain.com`)"
-      - "traefik.http.routers.smith-manoeuvre.tls=true"
-      - "traefik.http.routers.smith-manoeuvre.tls.certresolver=letsencrypt"
-      - "traefik.http.services.smith-manoeuvre.loadbalancer.server.port=80"
-      
-      # For Nginx Proxy Manager (if using NPM)
-      - "npm.enable=true"
-      - "npm.host=finance.yourdomain.com"
-      - "npm.port=80"
-    environment:
-      - NODE_ENV=production
-    volumes:
-      # Optional: for persistent logs
-      - ./logs:/var/log/nginx
+      - "3001:80"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 40s
-
-networks:
-  webproxy:
-    external: true  # Assumes you have a webproxy network for reverse proxy

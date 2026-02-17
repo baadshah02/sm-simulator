@@ -1,11 +1,11 @@
 // Debug Smith Manoeuvre Tests - Analyze actual results to fix validation ranges
 
-import { generateFinancialData } from '../utils/financialCalculations';
+import { generateFinancialData } from '../lib/financialCalculations';
 
 // Function to analyze actual results from our test cases
 export const debugSmithManoeuvreTestCases = () => {
   console.log('🔍 Debugging Smith Manoeuvre Test Cases - Analyzing Actual Results\n');
-  
+
   const testCases = [
     {
       name: "Fraser Smith Original Example",
@@ -67,48 +67,58 @@ export const debugSmithManoeuvreTestCases = () => {
   ];
 
   const debugResults = [];
-  
+
   testCases.forEach((testCase, index) => {
     console.log(`\n=== ${testCase.name} ===`);
-    
+
+    // Apply default values for new fields
+    const inputWithDefaults = {
+      mortgageType: 'fixed',
+      tfsaFundingSource: 'savings',
+      rrspFundingSource: 'savings',
+      retirementTaxRate: 20,
+      inflationRate: 2.0,
+      ...testCase.input,
+    };
+
     // Generate actual results
-    const results = generateFinancialData(testCase.input);
-    
-    // Analyze key years
-    const year1 = results[0];
-    const year5 = results[4];
-    const year10 = results[9];
-    const year15 = results[14];
+    const results = generateFinancialData(inputWithDefaults);
+
+    // results[0] = Year 0 (initial state), results[1] = Year 1, etc.
+    const year1 = results[1];
+    const year5 = results[5];
+    const year10 = results[10];
+    const year15 = results[15];
     const finalYear = results.find(year => year.mortgageBalance === 0) || results[results.length - 1];
-    
+
     console.log('\nYEAR 1 ACTUAL RESULTS:');
     console.log(`Mortgage Balance: $${year1?.mortgageBalance?.toLocaleString() || 'N/A'}`);
     console.log(`HELOC Balance: $${year1?.helocBalance?.toLocaleString() || 'N/A'}`);
     console.log(`Portfolio Value: $${year1?.portfolioValue?.toLocaleString() || 'N/A'}`);
     console.log(`Tax Refund: $${year1?.taxRefund?.toLocaleString() || 'N/A'}`);
     console.log(`Net Wealth: $${((year1?.portfolioValue || 0) - (year1?.helocBalance || 0)).toLocaleString()}`);
-    
+
     console.log('\nYEAR 5 ACTUAL RESULTS:');
     console.log(`Mortgage Balance: $${year5?.mortgageBalance?.toLocaleString() || 'N/A'}`);
     console.log(`HELOC Balance: $${year5?.helocBalance?.toLocaleString() || 'N/A'}`);
     console.log(`Portfolio Value: $${year5?.portfolioValue?.toLocaleString() || 'N/A'}`);
     console.log(`Tax Refund: $${year5?.taxRefund?.toLocaleString() || 'N/A'}`);
     console.log(`Net Wealth: $${((year5?.portfolioValue || 0) - (year5?.helocBalance || 0)).toLocaleString()}`);
-    
+
     console.log('\nYEAR 10 ACTUAL RESULTS:');
     console.log(`Mortgage Balance: $${year10?.mortgageBalance?.toLocaleString() || 'N/A'}`);
     console.log(`HELOC Balance: $${year10?.helocBalance?.toLocaleString() || 'N/A'}`);
     console.log(`Portfolio Value: $${year10?.portfolioValue?.toLocaleString() || 'N/A'}`);
     console.log(`Tax Refund: $${year10?.taxRefund?.toLocaleString() || 'N/A'}`);
     console.log(`Net Wealth: $${((year10?.portfolioValue || 0) - (year10?.helocBalance || 0)).toLocaleString()}`);
-    
+
     console.log('\nFINAL YEAR ACTUAL RESULTS:');
     console.log(`Year: ${finalYear?.year}`);
     console.log(`Mortgage Balance: $${finalYear?.mortgageBalance?.toLocaleString() || 'N/A'}`);
     console.log(`HELOC Balance: $${finalYear?.helocBalance?.toLocaleString() || 'N/A'}`);
     console.log(`Portfolio Value: $${finalYear?.portfolioValue?.toLocaleString() || 'N/A'}`);
     console.log(`Net Wealth: $${((finalYear?.portfolioValue || 0) - (finalYear?.helocBalance || 0)).toLocaleString()}`);
-    
+
     // Store results for analysis
     debugResults.push({
       testName: testCase.name,
@@ -118,23 +128,23 @@ export const debugSmithManoeuvreTestCases = () => {
       year15,
       finalYear
     });
-    
+
     console.log('\n' + '='.repeat(60));
   });
-  
+
   return debugResults;
 };
 
 // Generate corrected test ranges based on actual results
 export const generateCorrectedTestRanges = () => {
   console.log('\n🔧 Generating Corrected Test Ranges Based on Actual Results\n');
-  
+
   const debugResults = debugSmithManoeuvreTestCases();
-  
+
   debugResults.forEach(result => {
     console.log(`\n// ${result.testName} - CORRECTED RANGES`);
     console.log('expectedOutcomes: {');
-    
+
     if (result.year1) {
       console.log('  year1: {');
       console.log(`    taxRefundRange: [${Math.floor((result.year1.taxRefund || 0) * 0.8)}, ${Math.ceil((result.year1.taxRefund || 0) * 1.2)}],`);
@@ -142,7 +152,7 @@ export const generateCorrectedTestRanges = () => {
       console.log('    description: "Initial year with tax refund and HELOC usage"');
       console.log('  },');
     }
-    
+
     if (result.year5) {
       console.log('  year5: {');
       console.log(`    mortgageBalanceRange: [${Math.floor((result.year5.mortgageBalance || 0) * 0.9)}, ${Math.ceil((result.year5.mortgageBalance || 0) * 1.1)}],`);
@@ -151,7 +161,7 @@ export const generateCorrectedTestRanges = () => {
       console.log('    description: "After 5 years, portfolio growth accelerating"');
       console.log('  },');
     }
-    
+
     if (result.year10) {
       console.log('  year10: {');
       console.log(`    mortgageBalanceRange: [${Math.floor((result.year10.mortgageBalance || 0) * 0.8)}, ${Math.ceil((result.year10.mortgageBalance || 0) * 1.2)}],`);
@@ -160,7 +170,7 @@ export const generateCorrectedTestRanges = () => {
       console.log('    description: "Mid-point showing compound growth effects"');
       console.log('  },');
     }
-    
+
     if (result.finalYear) {
       const finalNetWealth = (result.finalYear.portfolioValue || 0) - (result.finalYear.helocBalance || 0);
       console.log('  finalYear: {');
@@ -168,9 +178,9 @@ export const generateCorrectedTestRanges = () => {
       console.log('    description: "Should achieve positive net wealth at mortgage payoff"');
       console.log('  }');
     }
-    
+
     console.log('},');
   });
-  
+
   return debugResults;
 };

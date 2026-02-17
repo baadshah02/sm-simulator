@@ -1,7 +1,7 @@
 // Smith Manoeuvre Advanced Validation Tests
 // Tests our calculations against published case studies and credible financial sources
 
-import { generateFinancialData } from '../utils/financialCalculations';
+import { generateFinancialData } from '../lib/financialCalculations';
 
 // Test cases from credible Smith Manoeuvre sources
 const smithManoeuvreTestCases = [
@@ -50,7 +50,7 @@ const smithManoeuvreTestCases = [
       }
     }
   },
-  
+
   {
     name: "Modern Smith Manoeuvre with TFSA (Financial Planning Magazine)",
     // Source: Canadian financial planning publications
@@ -237,7 +237,7 @@ const interestCalculationTests = [
       expectedNetInterestCost: 4080
     }
   },
-  
+
   {
     name: "Compound Growth with Reinvestment",
     description: "Validate reinvestment of tax refunds and dividends",
@@ -258,18 +258,28 @@ const interestCalculationTests = [
 export const runSmithManoeuvreAdvancedValidation = () => {
   console.log('🧪 Starting Advanced Smith Manoeuvre Validation Tests\n');
   console.log('Testing against published case studies and financial literature\n');
-  
+
   const results = [];
-  
+
   smithManoeuvreTestCases.forEach((testCase, index) => {
     console.log(`\nTest ${index + 1}: ${testCase.name}`);
     console.log(`Source: ${testCase.source}`);
     console.log(`Description: ${testCase.description}`);
     console.log('─'.repeat(60));
-    
+
+    // Apply default values for new fields if not specified in test case
+    const inputWithDefaults = {
+      mortgageType: 'fixed',
+      tfsaFundingSource: 'savings',
+      rrspFundingSource: 'savings',
+      retirementTaxRate: 20,
+      inflationRate: 2.0,
+      ...testCase.input,
+    };
+
     // Generate our calculation
-    const ourResult = generateFinancialData(testCase.input);
-    
+    const ourResult = generateFinancialData(inputWithDefaults);
+
     const validationResults = {
       testName: testCase.name,
       source: testCase.source,
@@ -277,78 +287,79 @@ export const runSmithManoeuvreAdvancedValidation = () => {
       issues: [],
       outcomes: {}
     };
-    
+
     // Validate expected outcomes
     Object.keys(testCase.expectedOutcomes).forEach(timePoint => {
       const expected = testCase.expectedOutcomes[timePoint];
       let actualYear;
-      
-      if (timePoint === 'year1') actualYear = ourResult[0];
-      else if (timePoint === 'year5') actualYear = ourResult[4];
-      else if (timePoint === 'year10') actualYear = ourResult[9];
-      else if (timePoint === 'year15') actualYear = ourResult[14];
+
+      // ourResult[0] is Year 0 (initial state), ourResult[1] is Year 1, etc.
+      if (timePoint === 'year1') actualYear = ourResult[1];
+      else if (timePoint === 'year5') actualYear = ourResult[5];
+      else if (timePoint === 'year10') actualYear = ourResult[10];
+      else if (timePoint === 'year15') actualYear = ourResult[15];
       else if (timePoint === 'finalYear') {
         actualYear = ourResult.find(year => year.mortgageBalance === 0) || ourResult[ourResult.length - 1];
       }
-      
+
       if (actualYear) {
         console.log(`\n${timePoint.toUpperCase()} Validation:`);
         console.log(`Expected: ${expected.description}`);
-        
+
         // Check ranges
         let yearPassed = true;
-        
+
         if (expected.mortgageBalanceRange) {
-          const inRange = actualYear.mortgageBalance >= expected.mortgageBalanceRange[0] && 
-                         actualYear.mortgageBalance <= expected.mortgageBalanceRange[1];
+          const inRange = actualYear.mortgageBalance >= expected.mortgageBalanceRange[0] &&
+            actualYear.mortgageBalance <= expected.mortgageBalanceRange[1];
           console.log(`Mortgage Balance: $${actualYear.mortgageBalance.toLocaleString()} (Expected: $${expected.mortgageBalanceRange[0].toLocaleString()}-$${expected.mortgageBalanceRange[1].toLocaleString()}) ${inRange ? '✅' : '❌'}`);
           if (!inRange) {
             yearPassed = false;
             validationResults.issues.push(`${timePoint} mortgage balance out of expected range`);
           }
         }
-        
+
         if (expected.helocBalanceRange) {
-          const inRange = actualYear.helocBalance >= expected.helocBalanceRange[0] && 
-                         actualYear.helocBalance <= expected.helocBalanceRange[1];
+          const inRange = actualYear.helocBalance >= expected.helocBalanceRange[0] &&
+            actualYear.helocBalance <= expected.helocBalanceRange[1];
           console.log(`HELOC Balance: $${actualYear.helocBalance.toLocaleString()} (Expected: $${expected.helocBalanceRange[0].toLocaleString()}-$${expected.helocBalanceRange[1].toLocaleString()}) ${inRange ? '✅' : '❌'}`);
           if (!inRange) {
             yearPassed = false;
             validationResults.issues.push(`${timePoint} HELOC balance out of expected range`);
           }
         }
-        
+
         if (expected.portfolioValueRange) {
-          const inRange = actualYear.portfolioValue >= expected.portfolioValueRange[0] && 
-                         actualYear.portfolioValue <= expected.portfolioValueRange[1];
+          const inRange = actualYear.portfolioValue >= expected.portfolioValueRange[0] &&
+            actualYear.portfolioValue <= expected.portfolioValueRange[1];
           console.log(`Portfolio Value: $${actualYear.portfolioValue.toLocaleString()} (Expected: $${expected.portfolioValueRange[0].toLocaleString()}-$${expected.portfolioValueRange[1].toLocaleString()}) ${inRange ? '✅' : '❌'}`);
           if (!inRange) {
             yearPassed = false;
             validationResults.issues.push(`${timePoint} portfolio value out of expected range`);
           }
         }
-        
+
         if (expected.taxRefundRange) {
-          const inRange = actualYear.taxRefund >= expected.taxRefundRange[0] && 
-                         actualYear.taxRefund <= expected.taxRefundRange[1];
+          const inRange = actualYear.taxRefund >= expected.taxRefundRange[0] &&
+            actualYear.taxRefund <= expected.taxRefundRange[1];
           console.log(`Tax Refund: $${actualYear.taxRefund.toLocaleString()} (Expected: $${expected.taxRefundRange[0].toLocaleString()}-$${expected.taxRefundRange[1].toLocaleString()}) ${inRange ? '✅' : '❌'}`);
           if (!inRange) {
             yearPassed = false;
             validationResults.issues.push(`${timePoint} tax refund out of expected range`);
           }
         }
-        
+
         if (expected.netWealthRange) {
           const netWealth = actualYear.portfolioValue - actualYear.helocBalance;
-          const inRange = netWealth >= expected.netWealthRange[0] && 
-                         netWealth <= expected.netWealthRange[1];
+          const inRange = netWealth >= expected.netWealthRange[0] &&
+            netWealth <= expected.netWealthRange[1];
           console.log(`Net Wealth: $${netWealth.toLocaleString()} (Expected: $${expected.netWealthRange[0].toLocaleString()}-$${expected.netWealthRange[1].toLocaleString()}) ${inRange ? '✅' : '❌'}`);
           if (!inRange) {
             yearPassed = false;
             validationResults.issues.push(`${timePoint} net wealth out of expected range`);
           }
         }
-        
+
         if (expected.netWealthMin) {
           const netWealth = actualYear.portfolioValue - actualYear.helocBalance;
           const meetsMin = netWealth >= expected.netWealthMin;
@@ -358,7 +369,7 @@ export const runSmithManoeuvreAdvancedValidation = () => {
             validationResults.issues.push(`${timePoint} net wealth below minimum threshold`);
           }
         }
-        
+
         validationResults.outcomes[timePoint] = {
           passed: yearPassed,
           actual: {
@@ -369,28 +380,28 @@ export const runSmithManoeuvreAdvancedValidation = () => {
             netWealth: actualYear.portfolioValue - actualYear.helocBalance
           }
         };
-        
+
         if (!yearPassed) validationResults.passed = false;
       }
     });
-    
+
     console.log(`\nOverall Result: ${validationResults.passed ? '✅ PASS' : '❌ FAIL'}`);
     if (validationResults.issues.length > 0) {
       console.log('Issues found:');
       validationResults.issues.forEach(issue => console.log(`  - ${issue}`));
     }
-    
+
     results.push(validationResults);
   });
-  
+
   // Summary
   const passedTests = results.filter(r => r.passed).length;
   const totalTests = results.length;
   const successRate = (passedTests / totalTests) * 100;
-  
+
   console.log(`\n📊 SMITH MANOEUVRE ADVANCED VALIDATION SUMMARY`);
   console.log(`Passed: ${passedTests}/${totalTests} (${successRate.toFixed(1)}%)`);
-  
+
   if (successRate >= 100) {
     console.log('🎉 ALL SMITH MANOEUVRE TESTS PASSED - Calculations match published examples!');
   } else if (successRate >= 80) {
@@ -398,7 +409,7 @@ export const runSmithManoeuvreAdvancedValidation = () => {
   } else {
     console.log('🚨 SMITH MANOEUVRE VALIDATION FAILED - Significant calculation errors detected');
   }
-  
+
   return {
     results,
     successRate,
@@ -413,61 +424,61 @@ export const runSmithManoeuvreAdvancedValidation = () => {
 // Run interest calculation validation
 export const runInterestCalculationValidation = () => {
   console.log('\n🧪 Starting Interest Calculation Validation\n');
-  
+
   const results = [];
-  
+
   interestCalculationTests.forEach((test, index) => {
     console.log(`Interest Test ${index + 1}: ${test.name}`);
     console.log(`Source: ${test.source}`);
     console.log(`Description: ${test.description}`);
-    
+
     const testCase = test.testCase;
     let passed = true;
     const issues = [];
-    
+
     // Validate basic interest calculation
     const actualAnnualInterest = testCase.helocBalance * (testCase.helocRate / 100);
     const interestMatch = Math.abs(actualAnnualInterest - testCase.expectedAnnualInterest) < 1;
-    
+
     console.log(`Annual Interest: $${actualAnnualInterest.toFixed(0)} (Expected: $${testCase.expectedAnnualInterest}) ${interestMatch ? '✅' : '❌'}`);
-    
+
     if (!interestMatch) {
       passed = false;
       issues.push('Annual interest calculation mismatch');
     }
-    
+
     // Validate deductible portion
     const actualDeductibleInterest = actualAnnualInterest * testCase.deductiblePortion;
     const deductibleMatch = Math.abs(actualDeductibleInterest - testCase.expectedDeductibleInterest) < 1;
-    
+
     console.log(`Deductible Interest: $${actualDeductibleInterest.toFixed(0)} (Expected: $${testCase.expectedDeductibleInterest}) ${deductibleMatch ? '✅' : '❌'}`);
-    
+
     if (!deductibleMatch) {
       passed = false;
       issues.push('Deductible interest calculation mismatch');
     }
-    
+
     // Validate tax saving
     const actualTaxSaving = actualDeductibleInterest * (testCase.taxRate / 100);
     const taxSavingMatch = Math.abs(actualTaxSaving - testCase.expectedTaxSaving) < 1;
-    
+
     console.log(`Tax Saving: $${actualTaxSaving.toFixed(0)} (Expected: $${testCase.expectedTaxSaving}) ${taxSavingMatch ? '✅' : '❌'}`);
-    
+
     if (!taxSavingMatch) {
       passed = false;
       issues.push('Tax saving calculation mismatch');
     }
-    
+
     results.push({
       testName: test.name,
       passed,
       issues
     });
-    
+
     console.log(`Result: ${passed ? '✅ PASS' : '❌ FAIL'}`);
     console.log('');
   });
-  
+
   return results;
 };
 
@@ -475,7 +486,7 @@ export const runInterestCalculationValidation = () => {
 export const runComprehensiveSmithManoeuvreTests = () => {
   const advancedResults = runSmithManoeuvreAdvancedValidation();
   const interestResults = runInterestCalculationValidation();
-  
+
   return {
     advancedValidation: advancedResults,
     interestValidation: interestResults,

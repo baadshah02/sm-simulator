@@ -1,12 +1,12 @@
-# Stage 1: Build the React app
-FROM --platform=$BUILDPLATFORM node:18-alpine AS build
+# Stage 1: Build the Next.js app
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 RUN printf "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM\n"
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
@@ -14,8 +14,8 @@ RUN npm run build
 FROM nginx:alpine
 RUN apk add --no-cache wget
 
-# Copy built app
-COPY --from=build /app/build /usr/share/nginx/html
+# Copy built app (Next.js static export goes to 'out/')
+COPY --from=build /app/out /usr/share/nginx/html
 
 # Create custom nginx config for SPA
 RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
@@ -24,12 +24,12 @@ RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
     echo '    root /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \
     echo '    index index.html;' >> /etc/nginx/conf.d/default.conf && \
     echo '    location / {' >> /etc/nginx/conf.d/default.conf && \
-    echo '        try_files $uri $uri/ /index.html;' >> /etc/nginx/conf.d/default.conf && \
+    echo '        try_files $uri $uri/ $uri/index.html /index.html;' >> /etc/nginx/conf.d/default.conf && \
     echo '        add_header Cache-Control "no-cache, no-store, must-revalidate";' >> /etc/nginx/conf.d/default.conf && \
     echo '        add_header Pragma "no-cache";' >> /etc/nginx/conf.d/default.conf && \
     echo '        add_header Expires "0";' >> /etc/nginx/conf.d/default.conf && \
     echo '    }' >> /etc/nginx/conf.d/default.conf && \
-    echo '    location /static/ {' >> /etc/nginx/conf.d/default.conf && \
+    echo '    location /_next/static/ {' >> /etc/nginx/conf.d/default.conf && \
     echo '        expires 1y;' >> /etc/nginx/conf.d/default.conf && \
     echo '        add_header Cache-Control "public, immutable";' >> /etc/nginx/conf.d/default.conf && \
     echo '    }' >> /etc/nginx/conf.d/default.conf && \
