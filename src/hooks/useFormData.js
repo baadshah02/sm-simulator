@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from 'react';
-import { DEFAULT_FORM_DATA } from '@/lib/formFields';
+import { DEFAULT_FORM_DATA, JAY_PROFILE } from '@/lib/formFields';
 import { getProvincialTaxRate } from '@/lib/provinceData';
 
-const STRING_FIELDS = ['mortgageType', 'province', 'taxBracket', 'tfsaFundingSource', 'rrspFundingSource'];
+const STRING_FIELDS = ['mortgageType', 'province', 'taxBracket', 'tfsaFundingSource', 'rrspFundingSource', 'optimizationMode', 'lumpSumYear'];
 
-export const useFormData = () => {
-  const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
+export const useFormData = (profileOverride = null) => {
+  const [formData, setFormData] = useState(profileOverride || DEFAULT_FORM_DATA);
 
   const handleChange = (name, value) => {
     if (STRING_FIELDS.includes(name)) {

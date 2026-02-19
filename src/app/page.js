@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useMemo, Suspense } from "react"
+import { usePathname } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useFormData } from "@/hooks/useFormData"
+import { JAY_PROFILE } from "@/lib/formFields"
 import {
     generateFinancialData,
     generateNoSmithData,
@@ -33,7 +35,13 @@ const FlowChart = dynamic(() => import("@/components/flow-chart"), {
 })
 
 export default function HomePage() {
-    const { formData, setFormData, handleChange, handleInputChange, resetForm } = useFormData()
+    const pathname = usePathname()
+    const profile = useMemo(() => {
+        if (pathname?.includes('/jay')) return JAY_PROFILE
+        return null
+    }, [pathname])
+
+    const { formData, setFormData, handleChange, handleInputChange, resetForm } = useFormData(profile)
     const [tableData, setTableData] = useState([])
     const [noSmithData, setNoSmithData] = useState([])
     const [comparisonData, setComparisonData] = useState(null)
@@ -43,6 +51,13 @@ export default function HomePage() {
 
     // Scenario state
     const [selectedScenario, setSelectedScenario] = useState('base')
+
+    // Allocation plan + explorer results (from Smart/Explorer modes)
+    const [allocationPlan, setAllocationPlan] = useState(null)
+    const [explorerResults, setExplorerResults] = useState(null)
+    const [aStarOptimal, setAStarOptimal] = useState(null)
+    const [robustnessResults, setRobustnessResults] = useState(null)
+    const [selectedRouteIndex, setSelectedRouteIndex] = useState(null)
 
     // Saved models for comparison
     const [savedModels, setSavedModels] = useState([])
@@ -59,6 +74,12 @@ export default function HomePage() {
 
             const data = generateFinancialData(formData, overridesFn)
             setTableData(data)
+
+            // Extract allocation plan, A* optimal, explorer results, and robustness
+            setAllocationPlan(data.allocationPlan || null)
+            setAStarOptimal(data.aStarOptimal || null)
+            setExplorerResults(data.explorerResults || null)
+            setRobustnessResults(data.robustnessResults || null)
 
             const noSmData = generateNoSmithData(formData)
             setNoSmithData(noSmData)
@@ -79,6 +100,7 @@ export default function HomePage() {
                 wealthBuilt: smithPayoff.finalPortfolio || 0,
                 retirementTaxRate: formData.retirementTaxRate,
                 inflationRate: formData.inflationRate,
+                optimizationMode: formData.optimizationMode || 'classic',
             })
         } catch (error) {
             console.error('Error generating financial data:', error)
@@ -86,6 +108,14 @@ export default function HomePage() {
             setIsLoading(false)
         }
     }, [formData, selectedScenario])
+
+    // Auto-regenerate when scenario changes (if data already exists)
+    useEffect(() => {
+        if (tableData.length > 0) {
+            handleGenerate()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedScenario])
 
     const handleRowClick = useCallback((year) => {
         const yearRow = tableData.find(d => d.year === year)
@@ -110,6 +140,11 @@ export default function HomePage() {
         setNoSmithData([])
         setComparisonData(null)
         setSelectedScenario('base')
+        setAllocationPlan(null)
+        setAStarOptimal(null)
+        setExplorerResults(null)
+        setRobustnessResults(null)
+        setSelectedRouteIndex(null)
     }, [resetForm])
 
     const handleLoadPreset = useCallback((presetFormData) => {
@@ -142,6 +177,8 @@ export default function HomePage() {
         }
     }, [savedModels, setFormData])
 
+    const currentMode = formData.optimizationMode || 'classic'
+
     return (
         <div className="min-h-screen">
             {/* Header */}
@@ -157,6 +194,11 @@ export default function HomePage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {currentMode !== 'classic' && (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                {currentMode === 'optimizer' ? '🎯 Optimizer' : currentMode === 'smart' ? '🧠 Smart' : '🔍 Explorer'}
+                            </Badge>
+                        )}
                         <Badge variant="outline" className="hidden sm:flex">🇨🇦 Canada</Badge>
                     </div>
                 </div>
@@ -215,7 +257,7 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                {/* Model Comparison (when ≥ 2 saved) */}
+                {/* Model Comparison (when ≥ 1 saved) */}
                 {savedModels.length >= 1 && (
                     <ModelComparison
                         models={savedModels}
@@ -230,20 +272,43 @@ export default function HomePage() {
                         comparisonData={comparisonData}
                         smithData={tableData}
                         noSmithData={noSmithData}
+                        allocationPlan={allocationPlan}
+                        aStarOptimal={aStarOptimal}
+                        explorerResults={explorerResults}
+                        robustnessResults={robustnessResults}
+                        selectedRouteIndex={selectedRouteIndex}
+                        onSelectRoute={setSelectedRouteIndex}
                     />
                 )}
 
                 {tableData.length > 0 && (
                     <FlowChart
-                        smithData={tableData}
+                        smithData={
+                            selectedRouteIndex !== null && explorerResults?.topRoutes?.[selectedRouteIndex]?.yearByYearData
+                                ? explorerResults.topRoutes[selectedRouteIndex].yearByYearData
+                                : aStarOptimal?.yearByYearData && selectedRouteIndex === 'astar'
+                                ? aStarOptimal.yearByYearData
+                                : tableData
+                        }
                         noSmithData={noSmithData}
+                        optimizationMode={currentMode}
                     />
                 )}
 
                 {tableData.length > 0 && (
                     <DataTable
-                        tableData={tableData}
+                        tableData={
+                            selectedRouteIndex !== null && explorerResults?.topRoutes?.[selectedRouteIndex]?.yearByYearData
+                                ? explorerResults.topRoutes[selectedRouteIndex].yearByYearData
+                                : tableData
+                        }
                         onRowClick={handleRowClick}
+                        optimizationMode={currentMode}
+                        selectedRouteName={
+                            selectedRouteIndex !== null && explorerResults?.topRoutes?.[selectedRouteIndex]
+                                ? `Route #${selectedRouteIndex + 1}`
+                                : null
+                        }
                     />
                 )}
 

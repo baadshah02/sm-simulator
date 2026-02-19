@@ -112,6 +112,11 @@ export default function SmithFlowDiagram({ yearData }) {
     const tfsaContrib = assumptions.tfsaContrib
     const smBoost = principalFreed - calculations.standardPrincipal
 
+    // Lump sum info from allocation plan
+    const allocPlan = yearData.allocationPlan
+    const lumpSumAmount = allocPlan?.lumpSumComponent || 0
+    const lumpSumAllocation = allocPlan?.allocation || null
+
     return (
         <div className="py-2">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
@@ -119,6 +124,49 @@ export default function SmithFlowDiagram({ yearData }) {
             </h3>
 
             <div className="flex flex-col items-center gap-1 overflow-x-auto">
+
+                {/* Lump Sum Injection (if applicable) */}
+                {lumpSumAmount > 0 && (
+                    <>
+                        <FlowNode
+                            icon="💰"
+                            title="Lump Sum Cash"
+                            amount={lumpSumAmount}
+                            color="border-purple-400"
+                            bg="bg-purple-50 dark:bg-purple-950/30"
+                            subtitle="One-time outside savings"
+                            highlight
+                        />
+                        <FlowArrow label="Optimally deployed →" variant="default" />
+                        <div className="flex items-start gap-3 flex-wrap justify-center mb-2">
+                            {lumpSumAllocation?.tfsa > 0 && (
+                                <div className="text-center">
+                                    <div className="text-[10px] text-purple-600 font-medium">→ TFSA</div>
+                                    <div className="text-xs font-bold text-teal-600">{formatCurrency(lumpSumAllocation.tfsa)}</div>
+                                </div>
+                            )}
+                            {lumpSumAllocation?.rrsp > 0 && (
+                                <div className="text-center">
+                                    <div className="text-[10px] text-purple-600 font-medium">→ RRSP</div>
+                                    <div className="text-xs font-bold text-indigo-600">{formatCurrency(lumpSumAllocation.rrsp)}</div>
+                                </div>
+                            )}
+                            {lumpSumAllocation?.mortgage > 0 && (
+                                <div className="text-center">
+                                    <div className="text-[10px] text-purple-600 font-medium">→ Mortgage</div>
+                                    <div className="text-xs font-bold text-emerald-600">{formatCurrency(lumpSumAllocation.mortgage)}</div>
+                                </div>
+                            )}
+                            {lumpSumAllocation?.nonReg > 0 && (
+                                <div className="text-center">
+                                    <div className="text-[10px] text-purple-600 font-medium">→ Non-Reg</div>
+                                    <div className="text-xs font-bold text-amber-600">{formatCurrency(lumpSumAllocation.nonReg)}</div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="w-full border-t border-purple-200 mb-2" />
+                    </>
+                )}
 
                 {/* Step 1: Mortgage Payment */}
                 <FlowNode

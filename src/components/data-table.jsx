@@ -20,7 +20,14 @@ const COLUMNS = [
     { key: 'principalBuilt', label: 'P Built' },
 ]
 
-export default function DataTable({ tableData, onRowClick }) {
+const MODE_LABELS = {
+    classic: '📊 Classic SM',
+    smart: '🧠 Smart Adaptive',
+    explorer: '🔍 Path Explorer',
+    optimizer: '🎯 Optimizer',
+}
+
+export default function DataTable({ tableData, onRowClick, optimizationMode = 'classic', selectedRouteName = null }) {
     const [sortKey, setSortKey] = useState('year')
     const [sortAsc, setSortAsc] = useState(true)
 
@@ -55,7 +62,17 @@ export default function DataTable({ tableData, onRowClick }) {
         <Card>
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">📊 Year-by-Year Results</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        📊 Year-by-Year Results
+                        <Badge variant="outline" className="text-xs">
+                            {MODE_LABELS[optimizationMode] || MODE_LABELS.classic}
+                        </Badge>
+                        {selectedRouteName && (
+                            <Badge variant="success" className="text-xs">
+                                🗺️ {selectedRouteName}
+                            </Badge>
+                        )}
+                    </CardTitle>
                     <div className="flex gap-2">
                         <Badge variant="outline">Net Wealth: {formatCurrency(netWealth)}</Badge>
                         <Badge variant={parseFloat(debtToWealth) < 50 ? "success" : "warning"}>

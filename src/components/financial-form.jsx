@@ -16,6 +16,7 @@ const SECTION_ICONS = {
     'Investment Returns': '📈',
     'TFSA Settings': '💎',
     'RRSP Settings': '🛡️',
+    'Optimization Settings': '🧠',
 }
 
 const provinceOptions = PROVINCES.map(p => ({ value: p.value, label: p.label }))
@@ -80,6 +81,9 @@ function FormField({ field, value, onValueChange, onInputChange }) {
 }
 
 export default function FinancialForm({ formData, onValueChange, onInputChange, onLoadPreset, presets }) {
+    const optimizationMode = formData.optimizationMode || 'classic'
+    const isSmartMode = optimizationMode !== 'classic'
+
     return (
         <div className="space-y-3">
             {/* Preset Buttons */}
@@ -102,33 +106,52 @@ export default function FinancialForm({ formData, onValueChange, onInputChange, 
 
             {/* Form Accordion */}
             <Accordion type="multiple" defaultValue={['Mortgage Settings', 'HELOC & Tax Settings']} className="space-y-3">
-                {FORM_FIELDS.map((section) => (
-                    <AccordionItem key={section.section} value={section.section} className="border rounded-lg px-1">
-                        <Card className="border-0 shadow-none">
-                            <AccordionTrigger className="px-5 py-3 hover:no-underline">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <span>{SECTION_ICONS[section.section] || '⚙️'}</span>
-                                    {section.section}
-                                </CardTitle>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                                <CardContent className="pt-2">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {section.fields.map((field) => (
-                                            <FormField
-                                                key={field.name}
-                                                field={field}
-                                                value={formData[field.name]}
-                                                onValueChange={onValueChange}
-                                                onInputChange={onInputChange}
-                                            />
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </AccordionContent>
-                        </Card>
-                    </AccordionItem>
-                ))}
+                {FORM_FIELDS.map((section) => {
+                    // For smartOnly sections, always show the optimizationMode selector
+                    // but hide the other fields unless in smart/explorer mode
+                    const isSectionSmartOnly = section.smartOnly === true
+                    const fieldsToRender = isSectionSmartOnly
+                        ? section.fields.filter(f => f.name === 'optimizationMode' || isSmartMode)
+                        : section.fields
+
+                    return (
+                        <AccordionItem key={section.section} value={section.section} className="border rounded-lg px-1">
+                            <Card className="border-0 shadow-none">
+                                <AccordionTrigger className="px-5 py-3 hover:no-underline">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <span>{SECTION_ICONS[section.section] || '⚙️'}</span>
+                                        {section.section}
+                                        {isSectionSmartOnly && isSmartMode && (
+                                            <span className="text-xs font-normal text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full ml-2">
+                                                {optimizationMode === 'optimizer' ? '🎯 Active' : optimizationMode === 'smart' ? '🧠 Active' : '🔍 Active'}
+                                            </span>
+                                        )}
+                                    </CardTitle>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <CardContent className="pt-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {fieldsToRender.map((field) => (
+                                                <FormField
+                                                    key={field.name}
+                                                    field={field}
+                                                    value={formData[field.name]}
+                                                    onValueChange={onValueChange}
+                                                    onInputChange={onInputChange}
+                                                />
+                                            ))}
+                                        </div>
+                                        {isSectionSmartOnly && !isSmartMode && (
+                                            <p className="text-xs text-muted-foreground mt-3 italic">
+                                                Select Optimizer to configure advanced optimization settings.
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+                    )
+                })}
             </Accordion>
         </div>
     )

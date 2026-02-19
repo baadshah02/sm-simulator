@@ -29,6 +29,12 @@ export const FORM_FIELDS = [
         label: 'Amortization Years:',
         tooltipContent: 'The total number of years over which your mortgage would be paid off with regular payments. Typically 25-30 years for Canadian mortgages.'
       },
+      {
+        name: 'prepaymentLimit',
+        label: 'Prepayment Limit (%):',
+        step: '1',
+        tooltipContent: 'Maximum annual lump-sum prepayment as a percentage of the original mortgage amount. Typically 10-20% for Canadian mortgages. Set to 100 for unlimited.'
+      },
     ]
   },
 
@@ -170,13 +176,100 @@ export const FORM_FIELDS = [
       },
     ]
   },
+
+  // ── Optimization Settings ──────────────────────────────────
+  {
+    section: 'Optimization Settings',
+    smartOnly: true,
+    fields: [
+      {
+        name: 'optimizationMode',
+        label: 'Allocation Mode:',
+        type: 'select',
+        options: [
+          { value: 'classic', label: 'Classic SM (fixed allocations)' },
+          { value: 'optimizer', label: '🎯 Optimizer (A* search + alternatives)' },
+        ],
+        tooltipContent: 'Classic: fixed RRSP/TFSA allocations each year. Optimizer: uses A* algorithm with marginal analysis to find provably optimal allocation path, plus shows alternative strategies for comparison.'
+      },
+      {
+        name: 'lumpSumAmount',
+        label: 'Lump Sum Amount:',
+        tooltipContent: 'One-time cash windfall from outside savings (bonus, inheritance, etc.). The optimizer will determine the best use: TFSA, RRSP, mortgage prepayment, or combinations.'
+      },
+      {
+        name: 'lumpSumYear',
+        label: 'Lump Sum Year:',
+        type: 'select',
+        options: [
+          { value: '1', label: 'Year 1' }, { value: '2', label: 'Year 2' }, { value: '3', label: 'Year 3' },
+          { value: '4', label: 'Year 4' }, { value: '5', label: 'Year 5' }, { value: '6', label: 'Year 6' },
+          { value: '7', label: 'Year 7' }, { value: '8', label: 'Year 8' }, { value: '9', label: 'Year 9' },
+          { value: '10', label: 'Year 10' }, { value: '15', label: 'Year 15' }, { value: '20', label: 'Year 20' },
+          { value: '25', label: 'Year 25' }, { value: '30', label: 'Year 30' },
+        ],
+        tooltipContent: 'Which year you receive the lump sum. Default is Year 1. The optimizer will test all deployment options for this year.'
+      },
+      {
+        name: 'baseSalary',
+        label: 'Base Salary:',
+        tooltipContent: 'Your annual earned income (base salary before RSU/bonus). Used to calculate RRSP room replenishment each year (18% of earned income).'
+      },
+      {
+        name: 'employerRrspMatch',
+        label: 'Employer RRSP Match (%):',
+        step: '0.5',
+        tooltipContent: 'Your employer\'s RRSP contribution as a percentage of your base salary. This is subtracted from annual RRSP room replenishment since it uses up room.'
+      },
+      {
+        name: 'rrspRoomTotal',
+        label: 'Total RRSP Room:',
+        tooltipContent: 'Your total available RRSP contribution room from CRA. This is tracked and depleted as contributions are made. New room is added annually from earned income.'
+      },
+    ]
+  },
 ];
 
+// Generic defaults for public users
 export const DEFAULT_FORM_DATA = {
+  initialMortgage: 500000,
+  mortgageRate: 4.5,
+  mortgageType: 'fixed',
+  amortYears: 25,
+  prepaymentLimit: 15,
+  helocRate: 5.5,
+  province: 'ON',
+  taxBracket: 'high',
+  taxRate: 48.35,
+  annualReturn: 7,
+  growthRate: 7,
+  dividendYield: 1.5,
+  inflationRate: 2.0,
+  initialTfsa: 0,
+  tfsaRoomYear1: 7000,
+  annualTfsaIncrease: 7000,
+  tfsaFundingSource: 'savings',
+  rrspYear1: 10000,
+  rrspOngoing: 10000,
+  rrspFundingSource: 'savings',
+  retirementTaxRate: 20,
+  initialHelocAvailable: 100000,
+  // Optimization fields
+  optimizationMode: 'classic',
+  baseSalary: 100000,
+  employerRrspMatch: 0,
+  rrspRoomTotal: 50000,
+  lumpSumAmount: 0,
+  lumpSumYear: '1',
+};
+
+// Personal profile — only loaded via /jay URL
+export const JAY_PROFILE = {
   initialMortgage: 1091000,
   mortgageRate: 3.65,
   mortgageType: 'fixed',
   amortYears: 30,
+  prepaymentLimit: 10,
   helocRate: 4.70,
   province: 'ON',
   taxBracket: 'top',
@@ -194,4 +287,10 @@ export const DEFAULT_FORM_DATA = {
   rrspFundingSource: 'heloc',
   retirementTaxRate: 20,
   initialHelocAvailable: 300000,
+  optimizationMode: 'classic',
+  baseSalary: 164000,
+  employerRrspMatch: 3,
+  rrspRoomTotal: 150000,
+  lumpSumAmount: 0,
+  lumpSumYear: '1',
 };

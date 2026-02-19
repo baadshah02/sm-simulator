@@ -55,7 +55,14 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 
-export default function FlowChart({ smithData, noSmithData }) {
+const MODE_LABELS = {
+    classic: 'Classic SM',
+    smart: '🧠 Smart Adaptive',
+    explorer: '🔍 Path Explorer',
+    optimizer: '🎯 Optimizer',
+}
+
+export default function FlowChart({ smithData, noSmithData, optimizationMode = 'classic' }) {
     const [showComparison, setShowComparison] = useState(false)
 
     if (!smithData?.length) return null
@@ -65,6 +72,7 @@ export default function FlowChart({ smithData, noSmithData }) {
         const noSm = noSmithData?.[i] || {}
         const stdPrincipal = row.details?.calculations?.standardPrincipal || 0
         const accelerationBoost = Math.max(0, row.principalBuilt - stdPrincipal)
+        const lumpSum = row.allocationPlan?.lumpSumComponent || 0
         return {
             year: row.year,
             // Debt (negative side)
@@ -78,6 +86,7 @@ export default function FlowChart({ smithData, noSmithData }) {
             taxRefund: row.taxRefund,
             stdPrincipal: Math.round(stdPrincipal),
             accelerationBoost: Math.round(accelerationBoost),
+            lumpSum: Math.round(lumpSum),
             // Comparison line
             noSmPortfolio: noSm.portfolioValue || 0,
             noSmMortgage: -(noSm.mortgageBalance || 0),
@@ -98,7 +107,14 @@ export default function FlowChart({ smithData, noSmithData }) {
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                        <CardTitle className="text-lg">📊 Smith Manoeuvre Flow Visualization</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            📊 Smith Manoeuvre Flow Visualization
+                            {optimizationMode !== 'classic' && (
+                                <Badge variant="outline" className="text-xs">
+                                    {MODE_LABELS[optimizationMode]}
+                                </Badge>
+                            )}
+                        </CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">
                             How debt converts to wealth — mortgage &amp; HELOC below, investments above
                         </p>
@@ -282,6 +298,7 @@ export default function FlowChart({ smithData, noSmithData }) {
                             />
                             <Bar dataKey="stdPrincipal" name="🏠 Std Principal" stackId="principal" fill="#22c55e" opacity={0.7} radius={[0, 0, 0, 0]} />
                             <Bar dataKey="accelerationBoost" name="⚡ SM Boost" stackId="principal" fill="#10b981" opacity={0.5} radius={[2, 2, 0, 0]} />
+                            <Bar dataKey="lumpSum" name="💰 Lump Sum" fill="#a855f7" opacity={0.8} radius={[2, 2, 0, 0]} />
                             <Bar dataKey="taxRefund" name="💳 Tax Refund" fill="#3b82f6" opacity={0.7} radius={[2, 2, 0, 0]} />
                         </ComposedChart>
                     </ResponsiveContainer>
