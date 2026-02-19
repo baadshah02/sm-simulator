@@ -3,58 +3,68 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { BarChart3, ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
+import PageHeader from "@/components/page-header"
 
 const FEATURES = [
     {
-        category: "🎯 Optimization Engine",
+        category: "🎯 Strategy Optimizer",
+        description: "The optimizer runs over 450 simulations to find your best allocation strategy — testing every combination of how to deploy your HELOC capital in Year 1 (8 options) × how to allocate ongoing cash in Years 2-30 (10 strategies) × stress-testing against 5 risk scenarios. Each simulation runs a complete 30-year financial model with all CRA rules enforced.",
         items: [
-            { name: "Smart Adaptive Optimizer", desc: "Marginal analysis ranks every dollar destination (TFSA, RRSP, Mortgage, Non-Reg) by after-tax future value — greedily allocating to maximize 30-year wealth." },
-            { name: "A* Two-Phase Search", desc: "Phase 1: Tests 80 strategy combinations (8 Year 1 × 10 ongoing). Phase 2: Local refinement on the best — tries switching individual years to find improvements." },
-            { name: "Alternative Strategies", desc: "Top 3 genuinely different strategies shown side-by-side. Click any to load its data into the chart and table." },
-            { name: "After-Tax Scoring", desc: "All strategies scored by true after-tax wealth: TFSA (tax-free), RRSP (minus retirement tax), Non-Reg (minus capital gains tax)." },
+            { name: "Marginal Value Analysis", desc: "For every dollar available, the engine calculates the after-tax future value of sending it to TFSA, RRSP, Mortgage paydown, or Non-Registered investments — then fills the highest-value destination first." },
+            { name: "80 Strategy Combinations", desc: "8 Year 1 deployment options (e.g., TFSA first, RRSP first, all Non-Reg) × 10 ongoing strategies (e.g., Max RRSP+TFSA, Pure SM, HELOC Paydown). Each runs independently for 30 years." },
+            { name: "Refinement Pass", desc: "After finding the top strategy, the engine tries switching individual years to alternative approaches — checking if a different allocation in a specific year improves the final outcome." },
+            { name: "After-Tax Scoring", desc: "Strategies are ranked by true after-tax net wealth: TFSA (100% tax-free), RRSP (taxed at retirement rate), Non-Reg (capital gains at 50% inclusion rate), minus HELOC debt." },
         ]
     },
     {
-        category: "🛡️ Risk Analysis",
+        category: "🛡️ Risk Scenario Models",
+        description: "Each risk scenario modifies the base simulation's market returns, interest rates, or both — showing how your strategy performs under stress. The robustness analysis runs the top 10 strategies across ALL 5 scenarios (50 additional simulations) to find which approach survives all market conditions best.",
         items: [
-            { name: "5 Risk Scenarios", desc: "Base Case, 2008 Crash (-38% in Year 3), Rate Shock (+2% HELOC), Stagflation (10yr low returns + high rates), Lost Decade (2% returns for 10 years)." },
-            { name: "Multi-Scenario Robustness", desc: "Top 10 strategies tested across ALL 5 scenarios. Robustness score = 50% base + 50% average stress. Shows which strategy survives market shocks best." },
-            { name: "Scenario × Strategy Matrix", desc: "Expandable table showing every strategy's net wealth under each risk scenario, with color-coded best/worst cases." },
+            { name: "📊 Base Case", desc: "Uses your exact inputs as-is. No market shocks. This is your \"everything goes according to plan\" scenario." },
+            { name: "📉 2008 Crash", desc: "Year 3: -38% market crash. Year 4: -5% continued decline. Years 5-6: +15% and +12% recovery bounce. Dividends reduced by 30% during crash. Models a severe GFC-style event." },
+            { name: "📈 Rate Shock", desc: "Year 2+: HELOC rate increases by +2.0%. Year 5+: Mortgage rate increases by +1.5% at renewal. Tests the impact of rising interest rate environments on your leveraged strategy." },
+            { name: "🐌 Stagflation", desc: "Years 1-10: Investment returns halved, HELOC rate +1.5%, mortgage rate +1.0%, inflation jumps to 4%. A prolonged low-growth, high-cost environment lasting a full decade." },
+            { name: "⏳ Lost Decade", desc: "Years 1-10: Only 2% annual returns (vs typical 7%), dividend yield drops to 1%. After Year 10, normal returns resume. Models a Japan-style extended flat market." },
         ]
     },
     {
         category: "💰 Lump Sum Planning",
+        description: "Model a one-time cash injection from outside savings (bonus, inheritance, tax refund, etc.). The optimizer determines the best deployment across all available accounts.",
         items: [
-            { name: "One-Time Cash Windfall", desc: "Model a bonus, inheritance, or savings injection. Specify amount and year — optimizer determines best deployment (TFSA, RRSP, or Mortgage)." },
-            { name: "Lump Sum Visualization", desc: "Purple-highlighted allocation cards show exactly where lump sum money goes. Flow chart shows purple bar in Annual Cash Flows for the lump sum year." },
-            { name: "Lump Sum in Year Details", desc: "Click any year in the table — the popup Money Flow diagram shows the lump sum injection with deployment arrows." },
+            { name: "Optimal Deployment", desc: "When a lump sum is specified, the marginal value engine determines whether to put it in TFSA, RRSP, mortgage prepayment, or a combination — based on which generates the highest 30-year after-tax wealth." },
+            { name: "Visual Tracking", desc: "Lump sum years are highlighted in purple throughout the app: allocation cards, flow charts, and year detail popups all clearly show the injection and where the money was deployed." },
         ]
     },
     {
-        category: "📊 Visualization & Analysis",
+        category: "📊 Visualization & Year-by-Year Detail",
+        description: "Every year of the 30-year simulation is fully transparent — click any year to see the complete money flow.",
         items: [
-            { name: "Stacked Area Flow Chart", desc: "Mortgage & HELOC below zero, investments above. Milestones marked: Mortgage-Free year, Wealth > Debt crossover." },
-            { name: "Annual Cash Flows", desc: "Bar chart decomposing: Standard Principal, SM Boost, Lump Sum, and Tax Refund for each year." },
-            { name: "Year-by-Year Money Flow", desc: "Click any row to see a detailed flow diagram: mortgage payment → interest/principal split → HELOC re-borrow → invest → deductions → refund → SM boost." },
-            { name: "CRA Audit Trail", desc: "Every year tracks: Opening/Closing ACB, deductible vs non-deductible interest, RRSP deductions, estimated refund, cumulative deductible interest." },
+            { name: "Flow Visualization", desc: "Stacked area chart shows mortgage & HELOC (below zero) and TFSA, RRSP, Non-Reg investments (above). Key milestones marked: Mortgage-Free year and Wealth > Debt crossover point." },
+            { name: "Annual Cash Flows", desc: "Bar chart breaks down each year's money movement: standard mortgage principal, SM acceleration boost, lump sum injection, and CRA tax refund." },
+            { name: "Money Flow Diagram", desc: "Click any table row to see a step-by-step visualization: mortgage payment → interest/principal split → HELOC re-borrow → investment → deductions → tax refund → SM boost. Shows exactly how each dollar flows." },
+            { name: "CRA Audit Trail", desc: "Full tax compliance tracking: Adjusted Cost Base (ACB), deductible vs non-deductible HELOC interest, RRSP deductions, dividend income, estimated refund, and cumulative deductible interest." },
         ]
     },
     {
-        category: "🏠 Canadian Tax Integration",
+        category: "🏠 Canadian Tax & Mortgage Calculations",
+        description: "All calculations follow Canadian tax law and mortgage conventions precisely.",
         items: [
-            { name: "Provincial Tax Rates", desc: "Auto-fills combined federal + provincial marginal tax rate for all provinces. Custom rate option available." },
-            { name: "Fixed & Variable Mortgages", desc: "Canadian fixed-rate semi-annual compounding (Interest Act) and variable monthly compounding both supported." },
-            { name: "TFSA/RRSP Room Tracking", desc: "CRA contribution limits enforced: TFSA annual room, RRSP annual max ($31,560), room replenishment from earned income." },
-            { name: "Inflation Adjustment", desc: "Dynamic inflation note shows portfolio value in today's dollars — updates based on selected strategy." },
+            { name: "Mortgage Compounding", desc: "Fixed-rate mortgages use semi-annual compounding as required by Canada's Interest Act — the effective monthly rate is calculated as (1 + annual_rate/2)^(1/6) - 1. Variable-rate mortgages use monthly compounding (annual_rate/12)." },
+            { name: "Provincial Tax Rates", desc: "Combined federal + provincial marginal tax rates auto-filled for all provinces and territories. Custom rate option available for non-standard situations." },
+            { name: "CRA Contribution Limits", desc: "TFSA annual room ($7,000 in 2024, configurable), RRSP annual maximum ($31,560), and room replenishment from 18% of earned income are all tracked and enforced." },
+            { name: "Readvanceable Mortgage", desc: "When mortgage principal is paid down, the freed room is immediately available for HELOC re-borrowing — this is the core mechanism that makes the Smith Manoeuvre work." },
+            { name: "Tax Refund Calculation", desc: "Refund = (RRSP contribution × marginal tax rate) + (deductible HELOC interest × marginal tax rate). This refund is then applied to accelerate the next year's mortgage paydown." },
         ]
     },
     {
-        category: "⚙️ Presets & Profiles",
+        category: "⚙️ Presets & Configuration",
+        description: "Start with a built-in preset or create your own. Custom presets save all your current form settings and appear alongside built-in presets for quick switching.",
         items: [
-            { name: "6 Presets", desc: "Vanilla SM, First-Time Buyer, Mid-Career Pro, Max Leverage, Conservative, Rental Investor — each tests a fundamentally different scenario." },
-            { name: "Model Comparison", desc: "Save multiple model snapshots, compare side-by-side: payoff year, final portfolio, net wealth, total refunds." },
-            { name: "URL-Based Profiles", desc: "Personal profiles loaded via URL path — keeps sensitive data private from public visitors." },
+            { name: "Vanilla SM Preset", desc: "Built-in baseline: $500K mortgage, no TFSA/RRSP, no HELOC — shows the pure Smith Manoeuvre mechanism without any registered account optimization." },
+            { name: "Create Custom Presets", desc: "Configure your exact financial situation, then click '+ Save as Preset' to save it. Custom presets appear in the preset bar with a ⭐ icon and can be loaded with one click. Remove them by hovering and clicking ✕." },
+            { name: "Model Save & Compare", desc: "Save multiple simulation results as named models. Compare them side-by-side: mortgage payoff year, final portfolio, net wealth, total tax refunds across different configurations." },
+            { name: "5 Risk Scenarios", desc: "Switch between Base Case, 2008 Crash, Rate Shock, Stagflation, and Lost Decade to see how your strategy performs under different market conditions." },
         ]
     },
 ];
@@ -62,38 +72,23 @@ const FEATURES = [
 export default function FeaturesPage() {
     return (
         <div className="min-h-screen">
-            {/* Header */}
-            <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-emerald-600 flex items-center justify-center">
-                            <BarChart3 className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold tracking-tight">Smith Manoeuvre Simulator</h1>
-                            <p className="text-xs text-muted-foreground">Features Overview</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="hidden sm:flex">🇨🇦 Canada</Badge>
-                        <a href="/">
-                            <Button variant="outline" size="sm" className="text-xs gap-1">
-                                <ArrowLeft className="h-3.5 w-3.5" />
-                                Back to Simulator
-                            </Button>
-                        </a>
-                    </div>
-                </div>
-            </header>
+            <PageHeader subtitle="Features Overview" currentPage="features" />
 
-            {/* Content */}
             <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
                 <div className="text-center space-y-3">
                     <h2 className="text-3xl font-bold">🇨🇦 Smith Manoeuvre Simulator</h2>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        A comprehensive Canadian wealth strategy analysis tool with A* optimization, 
-                        multi-scenario robustness testing, and complete CRA compliance tracking.
+                        A comprehensive Canadian wealth strategy analysis tool that runs <strong>450+ simulations</strong> to find 
+                        your optimal allocation strategy, stress-tests it against 5 risk scenarios, and provides complete 
+                        year-by-year transparency with CRA compliance tracking.
                     </p>
+                    <div className="flex flex-wrap justify-center gap-2 pt-2">
+                        <Badge variant="outline">450+ Simulations</Badge>
+                        <Badge variant="outline">5 Risk Scenarios</Badge>
+                        <Badge variant="outline">30-Year Projections</Badge>
+                        <Badge variant="outline">CRA Compliant</Badge>
+                        <Badge variant="outline">After-Tax Scoring</Badge>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
@@ -101,6 +96,11 @@ export default function FeaturesPage() {
                         <Card key={si}>
                             <CardContent className="pt-6 space-y-4">
                                 <h3 className="text-lg font-semibold">{section.category}</h3>
+                                {section.description && (
+                                    <p className="text-sm text-muted-foreground border-l-2 border-emerald-300 pl-3">
+                                        {section.description}
+                                    </p>
+                                )}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {section.items.map((item, ii) => (
                                         <div key={ii} className="rounded-lg border p-4 space-y-2">

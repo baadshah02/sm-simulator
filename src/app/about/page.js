@@ -1,30 +1,14 @@
 "use client"
 
-import Link from "next/link"
-import { ArrowLeft, TrendingUp, DollarSign, PiggyBank, Briefcase } from "lucide-react"
+import { TrendingUp, DollarSign, PiggyBank, Briefcase, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import PageHeader from "@/components/page-header"
 
 export default function AboutPage() {
     return (
         <div className="min-h-screen bg-background">
-            {/* Header */}
-            <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-                <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-emerald-600 flex items-center justify-center">
-                            <TrendingUp className="h-5 w-5 text-white" />
-                        </div>
-                        <h1 className="text-lg font-bold tracking-tight">About Smith Manoeuvre Simulator</h1>
-                    </div>
-                    <Link href="/">
-                        <Button variant="ghost" size="sm">
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back to Simulator
-                        </Button>
-                    </Link>
-                </div>
-            </header>
+            <PageHeader subtitle="About the Smith Manoeuvre" currentPage="about" />
 
             <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
 
@@ -62,7 +46,7 @@ export default function AboutPage() {
                         </CardHeader>
                         <CardContent>
                             <p className="text-muted-foreground">
-                                By re-borrowing your equity to invest, you convert that "bad debt" into "good debt", where the interest <strong>is tax-deductible</strong>.
+                                By re-borrowing your equity to invest, you convert that &quot;bad debt&quot; into &quot;good debt&quot;, where the interest <strong>is tax-deductible</strong>.
                             </p>
                         </CardContent>
                     </Card>
@@ -76,45 +60,21 @@ export default function AboutPage() {
                     </h3>
 
                     <div className="space-y-6">
-                        <div className="flex gap-4">
-                            <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm border border-emerald-200">1</div>
-                            <div>
-                                <h4 className="font-semibold text-lg">Pay Down Principal</h4>
-                                <p className="text-muted-foreground">You pay <strong>$1,000</strong> towards your regular mortgage principal.</p>
+                        {[
+                            { step: 1, title: "Pay Down Principal", desc: "You pay $1,000 towards your regular mortgage principal." },
+                            { step: 2, title: "Re-borrow Immediately", desc: "Your Readvanceable Mortgage (HELOC) limit automatically increases by $1,000. You borrow this back." },
+                            { step: 3, title: "Invest", desc: "You invest that $1,000 into dividend-paying Canadian stocks or funds." },
+                            { step: 4, title: "Claim Tax Refund", desc: "Come tax time, the interest you paid on the $1,000 HELOC loan is tax-deductible. You get a tax refund." },
+                            { step: 5, title: "Repeat & Compound", desc: "You use the tax refund (and dividends) to pay down your mortgage even faster, repeating the cycle." },
+                        ].map(({ step, title, desc }) => (
+                            <div key={step} className="flex gap-4">
+                                <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm border border-emerald-200">{step}</div>
+                                <div>
+                                    <h4 className="font-semibold text-lg">{title}</h4>
+                                    <p className="text-muted-foreground"><strong>{desc.split(' ')[0]} {desc.split(' ')[1]}</strong> {desc.split(' ').slice(2).join(' ')}</p>
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm border border-emerald-200">2</div>
-                            <div>
-                                <h4 className="font-semibold text-lg">Re-borrow Immediately</h4>
-                                <p className="text-muted-foreground">Your Readvanceable Mortgage (HELOC) limit automatically increases by <strong>$1,000</strong>. You borrow this back.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm border border-emerald-200">3</div>
-                            <div>
-                                <h4 className="font-semibold text-lg">Invest</h4>
-                                <p className="text-muted-foreground">You invest that <strong>$1,000</strong> into dividend-paying Canadian stocks or funds.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm border border-emerald-200">4</div>
-                            <div>
-                                <h4 className="font-semibold text-lg">Claim Tax Refund</h4>
-                                <p className="text-muted-foreground">Come tax time, the interest you paid on the <strong>$1,000</strong> HELOC loan is tax-deductible. You get a tax refund.</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4">
-                            <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm border border-emerald-200">5</div>
-                            <div>
-                                <h4 className="font-semibold text-lg">Repeat & Compound</h4>
-                                <p className="text-muted-foreground">You use the tax refund (and dividends) to pay down your mortgage even faster, repeating the cycle.</p>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </section>
 
@@ -126,28 +86,16 @@ export default function AboutPage() {
                     </h3>
                     <ul className="space-y-3">
                         <li>
-                            <a
-                                href="https://smithmanoeuvre.com/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium inline-flex items-center gap-1"
-                            >
-                                The Smith Manoeuvre™ Official Website
-                                <ArrowLeft className="h-3 w-3 rotate-180" />
+                            <a href="https://smithmanoeuvre.com/" target="_blank" rel="noopener noreferrer" className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium">
+                                The Smith Manoeuvre™ Official Website →
                             </a>
                             <p className="text-sm text-muted-foreground mt-1">
-                                The official source by Robinson Smith. Find certified professionals and the original book "Master Your Mortgage for Financial Freedom".
+                                The official source by Robinson Smith. Find certified professionals and the original book &quot;Master Your Mortgage for Financial Freedom&quot;.
                             </p>
                         </li>
                         <li>
-                            <a
-                                href="https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-22100-carrying-charges-interest-expenses.html"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium inline-flex items-center gap-1"
-                            >
-                                CRA: Line 22100 - Carrying charges and interest expenses
-                                <ArrowLeft className="h-3 w-3 rotate-180" />
+                            <a href="https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/deductions-credits-expenses/line-22100-carrying-charges-interest-expenses.html" target="_blank" rel="noopener noreferrer" className="text-emerald-700 dark:text-emerald-400 hover:underline font-medium">
+                                CRA: Line 22100 - Carrying charges and interest expenses →
                             </a>
                             <p className="text-sm text-muted-foreground mt-1">
                                 Official Canada Revenue Agency details on deducting interest expenses for investment income.
@@ -161,12 +109,12 @@ export default function AboutPage() {
                     <p className="text-xl font-medium mb-6">
                         The result? You pay off your mortgage years earlier and build a massive investment portfolio simultaneously.
                     </p>
-                    <Link href="/">
-                        <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                            <TrendingUp className="h-5 w-5 mr-2" />
+                    <a href="/">
+                        <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                            <TrendingUp className="h-5 w-5" />
                             Start Simulating
                         </Button>
-                    </Link>
+                    </a>
                 </div>
 
             </main>

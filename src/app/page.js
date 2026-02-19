@@ -22,7 +22,8 @@ import ScenarioSelector from "@/components/scenario-selector"
 import ModelComparison from "@/components/model-comparison"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, BarChart3, RotateCcw, Save } from "lucide-react"
+import PageHeader from "@/components/page-header"
+import { Calculator, RotateCcw, Save } from "lucide-react"
 
 // Lazy-load the heavy Recharts-based FlowChart (200KB+ library)
 const FlowChart = dynamic(() => import("@/components/flow-chart"), {
@@ -63,6 +64,11 @@ export default function HomePage() {
     const [savedModels, setSavedModels] = useState([])
     const [modelName, setModelName] = useState('')
     const [showSaveInput, setShowSaveInput] = useState(false)
+
+    // Custom presets (user-created, stored in state)
+    const [customPresets, setCustomPresets] = useState([])
+    const [showPresetInput, setShowPresetInput] = useState(false)
+    const [presetName, setPresetName] = useState('')
 
     const handleGenerate = useCallback(() => {
         try {
@@ -177,38 +183,39 @@ export default function HomePage() {
         }
     }, [savedModels, setFormData])
 
+    // Custom preset handlers
+    const handleSavePreset = useCallback(() => {
+        const name = presetName.trim() || `My Preset ${customPresets.length + 1}`
+        setCustomPresets(prev => [...prev, {
+            id: `custom-${Date.now()}`,
+            name,
+            icon: '⭐',
+            description: `$${(formData.initialMortgage / 1000).toFixed(0)}K mortgage, custom configuration`,
+            formData: { ...formData },
+        }])
+        setPresetName('')
+        setShowPresetInput(false)
+    }, [formData, presetName, customPresets.length])
+
+    const handleRemovePreset = useCallback((presetId) => {
+        setCustomPresets(prev => prev.filter(p => p.id !== presetId))
+    }, [])
+
+    // Combine built-in + custom presets
+    const allPresets = useMemo(() => [...PRESETS, ...customPresets], [customPresets])
+
     const currentMode = formData.optimizationMode || 'classic'
 
     return (
         <div className="min-h-screen">
-            {/* Header */}
-            <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-emerald-600 flex items-center justify-center">
-                            <BarChart3 className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold tracking-tight">Smith Manoeuvre Simulator</h1>
-                            <p className="text-xs text-muted-foreground">Canadian Wealth Strategy Analysis</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {currentMode !== 'classic' && (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                {currentMode === 'optimizer' ? '🎯 Optimizer' : currentMode === 'smart' ? '🧠 Smart' : '🔍 Explorer'}
-                            </Badge>
-                        )}
-                        <Badge variant="outline" className="hidden sm:flex">🇨🇦 Canada</Badge>
-                        <a href="/features">
-                            <Button variant="ghost" size="sm" className="text-xs">Features</Button>
-                        </a>
-                        <a href="/about">
-                            <Button variant="ghost" size="sm" className="text-xs">About</Button>
-                        </a>
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                currentPage="home"
+                extraBadge={currentMode !== 'classic' ? (
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                        {currentMode === 'optimizer' ? '🎯 Optimizer' : currentMode === 'smart' ? '🧠 Smart' : '🔍 Explorer'}
+                    </Badge>
+                ) : null}
+            />
 
             {/* Content */}
             <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
@@ -218,8 +225,26 @@ export default function HomePage() {
                     onValueChange={handleChange}
                     onInputChange={handleInputChange}
                     onLoadPreset={handleLoadPreset}
-                    presets={PRESETS}
+                    presets={allPresets}
+                    onSavePreset={() => setShowPresetInput(true)}
+                    customPresetIds={customPresets.map(p => p.id)}
+                    onRemovePreset={handleRemovePreset}
                 />
+                {showPresetInput && (
+                    <div className="flex items-center justify-center gap-2">
+                        <input
+                            type="text"
+                            value={presetName}
+                            onChange={e => setPresetName(e.target.value)}
+                            placeholder="Preset name..."
+                            className="h-9 px-3 rounded-md border text-sm w-48"
+                            onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowPresetInput(false); }}
+                            autoFocus
+                        />
+                        <Button size="sm" onClick={handleSavePreset}>Save Preset</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowPresetInput(false)}>✕</Button>
+                    </div>
+                )}
 
                 {/* Actions Row: Scenario + Generate + Save + Reset */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

@@ -80,7 +80,7 @@ function FormField({ field, value, onValueChange, onInputChange }) {
     )
 }
 
-export default function FinancialForm({ formData, onValueChange, onInputChange, onLoadPreset, presets }) {
+export default function FinancialForm({ formData, onValueChange, onInputChange, onLoadPreset, presets, onSavePreset, customPresetIds = [], onRemovePreset }) {
     const optimizationMode = formData.optimizationMode || 'classic'
     const isSmartMode = optimizationMode !== 'classic'
 
@@ -90,17 +90,40 @@ export default function FinancialForm({ formData, onValueChange, onInputChange, 
             {presets && presets.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                     <span className="text-xs font-medium text-muted-foreground self-center mr-1">Presets:</span>
-                    {presets.map(preset => (
+                    {presets.map(preset => {
+                        const isCustom = customPresetIds.includes(preset.id);
+                        return (
+                            <span key={preset.id} className="relative group inline-flex">
+                                <button
+                                    onClick={() => onLoadPreset(preset.formData)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium hover:bg-muted transition-colors ${isCustom ? 'border-amber-300 bg-amber-50/50' : ''}`}
+                                    title={preset.description}
+                                >
+                                    <span>{preset.icon}</span>
+                                    {preset.name}
+                                </button>
+                                {isCustom && onRemovePreset && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onRemovePreset(preset.id); }}
+                                        className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Remove preset"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </span>
+                        );
+                    })}
+                    {onSavePreset && (
                         <button
-                            key={preset.id}
-                            onClick={() => onLoadPreset(preset.formData)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium hover:bg-muted transition-colors"
-                            title={preset.description}
+                            onClick={onSavePreset}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-emerald-300 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
+                            title="Save current settings as a preset"
                         >
-                            <span>{preset.icon}</span>
-                            {preset.name}
+                            <span>+</span>
+                            Save as Preset
                         </button>
-                    ))}
+                    )}
                 </div>
             )}
 
