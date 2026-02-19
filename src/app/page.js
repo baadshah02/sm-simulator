@@ -23,7 +23,7 @@ import ModelComparison from "@/components/model-comparison"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import PageHeader from "@/components/page-header"
-import { Calculator, RotateCcw, Save } from "lucide-react"
+import { Calculator, RotateCcw, Save, Share2 } from "lucide-react"
 
 // Lazy-load the heavy Recharts-based FlowChart (200KB+ library)
 const FlowChart = dynamic(() => import("@/components/flow-chart"), {
@@ -204,6 +204,40 @@ export default function HomePage() {
     // Combine built-in + custom presets
     const allPresets = useMemo(() => [...PRESETS, ...customPresets], [customPresets])
 
+    // Share URL: encode formData as base64 in ?config= param
+    const [shareMsg, setShareMsg] = useState('')
+    const handleShare = useCallback(() => {
+        try {
+            const json = JSON.stringify(formData)
+            const encoded = btoa(unescape(encodeURIComponent(json)))
+            const url = `${window.location.origin}${window.location.pathname}?config=${encoded}`
+            navigator.clipboard.writeText(url)
+            setShareMsg('Link copied!')
+            setTimeout(() => setShareMsg(''), 2000)
+        } catch (e) {
+            setShareMsg('Failed to copy')
+            setTimeout(() => setShareMsg(''), 2000)
+        }
+    }, [formData])
+
+    // Auto-load from shared URL on mount
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const params = new URLSearchParams(window.location.search)
+        const configParam = params.get('config')
+        if (configParam) {
+            try {
+                const json = decodeURIComponent(escape(atob(configParam)))
+                const loaded = JSON.parse(json)
+                if (loaded && loaded.initialMortgage) {
+                    setFormData(loaded)
+                }
+            } catch (e) {
+                console.warn('Failed to load shared config from URL')
+            }
+        }
+    }, [setFormData])
+
     const currentMode = formData.optimizationMode || 'classic'
 
     return (
@@ -281,6 +315,10 @@ export default function HomePage() {
                                 )}
                             </>
                         )}
+                        <Button variant="outline" size="lg" onClick={handleShare}>
+                            <Share2 className="h-4 w-4 mr-2" />
+                            {shareMsg || 'Share'}
+                        </Button>
                         <Button variant="outline" size="lg" onClick={handleReset}>
                             <RotateCcw className="h-4 w-4 mr-2" />
                             Reset
