@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useMemo, Suspense } from "react"
 import { usePathname } from "next/navigation"
-import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useFormData } from "@/hooks/useFormData"
 import { JAY_PROFILE } from "@/lib/formFields"
@@ -201,9 +200,12 @@ export default function HomePage() {
                             </Badge>
                         )}
                         <Badge variant="outline" className="hidden sm:flex">🇨🇦 Canada</Badge>
-                        <Link href="/about">
-                            <Button variant="ghost" size="sm">About</Button>
-                        </Link>
+                        <a href="/features">
+                            <Button variant="ghost" size="sm" className="text-xs">Features</Button>
+                        </a>
+                        <a href="/about">
+                            <Button variant="ghost" size="sm" className="text-xs">About</Button>
+                        </a>
                     </div>
                 </div>
             </header>

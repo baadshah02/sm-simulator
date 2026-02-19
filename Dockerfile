@@ -1,8 +1,5 @@
 # Stage 1: Build the Next.js app
-FROM --platform=$BUILDPLATFORM node:20-alpine AS build
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
-RUN printf "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM\n"
+FROM node:20-alpine AS build
 
 WORKDIR /app
 COPY package*.json ./
