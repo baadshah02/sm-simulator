@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, Suspense } from "react"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useFormData } from "@/hooks/useFormData"
 import { JAY_PROFILE } from "@/lib/formFields"
@@ -200,6 +201,9 @@ export default function HomePage() {
                             </Badge>
                         )}
                         <Badge variant="outline" className="hidden sm:flex">🇨🇦 Canada</Badge>
+                        <Link href="/about">
+                            <Button variant="ghost" size="sm">About</Button>
+                        </Link>
                     </div>
                 </div>
             </header>
@@ -287,8 +291,8 @@ export default function HomePage() {
                             selectedRouteIndex !== null && explorerResults?.topRoutes?.[selectedRouteIndex]?.yearByYearData
                                 ? explorerResults.topRoutes[selectedRouteIndex].yearByYearData
                                 : aStarOptimal?.yearByYearData && selectedRouteIndex === 'astar'
-                                ? aStarOptimal.yearByYearData
-                                : tableData
+                                    ? aStarOptimal.yearByYearData
+                                    : tableData
                         }
                         noSmithData={noSmithData}
                         optimizationMode={currentMode}
